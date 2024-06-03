@@ -1,9 +1,12 @@
 # setup.ps1
 param(
-    [string]$envName = "webwright",
     [string]$pythonVersion = "3.8",
     [string]$requirementsFile = "requirements.txt"
 )
+
+# Get the name of the root directory (checked out project path name)
+$projectPath = Get-Location
+$envName = Split-Path -Leaf $projectPath
 
 # Function to check if a conda environment exists
 function Test-CondaEnvExists {
@@ -61,18 +64,37 @@ function List-SSHKeys {
         Write-Output "$($i): $($key.Name)"
         $i++
     }
-    return $keys
 }
 
 # Function to prompt user to select an SSH key
 function Select-SSHKey {
-    $keys = List-SSHKeys
+    $sshDirectory = "$HOME\.ssh"
+    $keys = Get-ChildItem -Path $sshDirectory -File | Where-Object { $_.Extension -eq '' }
     $selection = Read-Host "Enter the number of the SSH key to use"
     if ($selection -notmatch '^\d+$' -or [int]$selection -ge $keys.Count) {
         Write-Error "Invalid selection"
         exit 1
     }
     return $keys[$selection].FullName
+}
+
+# Function to configure SSH for the selected key
+function Configure-SSH {
+    param(
+        [string]$selectedKey
+    )
+    $sshConfigFile = "$HOME\.ssh\config"
+    if (-not (Test-Path -Path $sshConfigFile)) {
+        New-Item -Path $sshConfigFile -ItemType File -Force
+    }
+    $sshConfigContent = @"
+Host github.com
+  User git
+  IdentityFile $selectedKey
+  IdentitiesOnly yes
+"@
+    Add-Content -Path $sshConfigFile -Value $sshConfigContent
+    Write-Output "SSH configuration updated."
 }
 
 # Main script
@@ -103,27 +125,11 @@ if (Test-Path -Path $requirementsFile) {
     Write-Warning "Requirements file '$requirementsFile' not found. Skipping package installation."
 }
 
-$sshDirectory = "$HOME\.ssh"
-if (-not (Test-Path -Path $sshDirectory)) {
-    Write-Error "No .ssh directory found in $HOME"
-    exit 1
-}
-$keys = Get-ChildItem -Path $sshDirectory -File | Where-Object { $_.Extension -eq '' }
-if ($keys.Count -eq 0) {
-    Write-Error "No SSH keys found in $sshDirectory"
-    exit 1
-}
-Write-Output "Available SSH keys:"
-$i = 0
-foreach ($key in $keys) {
-    Write-Output "$($i): $($key.Name)"
-    $i++
-}
-
-# Select and configure SSH key for Git
+# List and select SSH key for Git
+List-SSHKeys
 $selectedKey = Select-SSHKey
 Write-Output "Selected SSH key: $selectedKey"
-git config --global core.sshCommand "ssh -i $selectedKey"
+Configure-SSH -selectedKey $selectedKey
 
 Write-Output "Conda environment '$envName' is now active and Git is configured with the selected SSH key."
 
