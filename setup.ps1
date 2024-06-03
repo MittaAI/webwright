@@ -96,8 +96,11 @@ Host github.com
 "@
     Set-Content -Path $sshConfigFile -Value $sshConfigContent
     Write-Output "SSH configuration updated."
-}
 
+    # Set the global core.sshCommand to use the selected key
+    git config --global core.sshCommand "ssh -i $selectedKey"
+    Write-Output "Global SSH command configuration updated."
+}
 
 # Main script
 if (-not (Test-Path -Path "$env:CONDA_EXE")) {
