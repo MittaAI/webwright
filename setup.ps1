@@ -89,13 +89,15 @@ function Configure-SSH {
     }
     $sshConfigContent = @"
 Host github.com
+  HostName github.com
   User git
   IdentityFile $selectedKey
   IdentitiesOnly yes
 "@
-    Add-Content -Path $sshConfigFile -Value $sshConfigContent
+    Set-Content -Path $sshConfigFile -Value $sshConfigContent
     Write-Output "SSH configuration updated."
 }
+
 
 # Main script
 if (-not (Test-Path -Path "$env:CONDA_EXE")) {
@@ -130,6 +132,9 @@ List-SSHKeys
 $selectedKey = Select-SSHKey
 Write-Output "Selected SSH key: $selectedKey"
 Configure-SSH -selectedKey $selectedKey
+
+# Ensure remote URL is using SSH
+git remote set-url origin git@github.com:mittaai/webwright.git
 
 Write-Output "Conda environment '$envName' is now active and Git is configured with the selected SSH key."
 

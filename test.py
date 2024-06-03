@@ -1,12 +1,9 @@
 import os
 from git import Repo
 
-# Replace these variables with your own repository path and commit message
-repo_path = 'MittaAI/webwright'
+# Automatically detect the current repository path
+repo_path = os.getcwd()
 commit_message = 'this is a commit'
-
-# Change to the repository directory
-os.chdir(repo_path)
 
 # Initialize the repository
 repo = Repo(repo_path)
