@@ -1,4 +1,4 @@
-# Webwright Website Automation 🚀
+# Webwright: Web Automation Done Right 🚀
 
 This project provides command line tools to quickly set up new websites with included templates, automate commits to GitHub, and leverage Google Cloud Run for hosting.
 
