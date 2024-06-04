@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# secrets and whatnot
+.openai_token
+.ssh_key
+.webwright_history
+.auth
+
 # C extensions
 *.so
 

@@ -1,1 +1,7 @@
 gitpython
+prompt_toolkit
+coolname
+pygments
+openai
+openai[datalib]
+tenacity

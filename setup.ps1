@@ -102,6 +102,15 @@ Host github.com
     Write-Output "Global SSH command configuration updated."
 }
 
+# Function to prompt for the OpenAI API key
+function Get-OpenAIAPIKey {
+    $openAIApiKey = $null
+    while ([string]::IsNullOrWhiteSpace($openAIApiKey)) {
+        $openAIApiKey = Read-Host "Please enter your OpenAI API key"
+    }
+    return $openAIApiKey
+}
+
 # Main script
 if (-not (Test-Path -Path "$env:CONDA_EXE")) {
     Write-Error "Conda is not installed or not found in the system PATH."
@@ -130,14 +139,39 @@ if (Test-Path -Path $requirementsFile) {
     Write-Warning "Requirements file '$requirementsFile' not found. Skipping package installation."
 }
 
-# List and select SSH key for Git
-List-SSHKeys
-$selectedKey = Select-SSHKey
+# Check if .ssh_key file exists and contains a valid SSH key path
+$sshKeyFile = ".ssh_key"
+if (Test-Path -Path $sshKeyFile) {
+    $selectedKey = Get-Content -Path $sshKeyFile -First 1
+    if (-not (Test-Path -Path $selectedKey)) {
+        $selectedKey = $null
+    }
+}
+
+# If .ssh_key file doesn't exist or contains an invalid path, prompt user to select an SSH key
+if (-not $selectedKey) {
+    List-SSHKeys
+    $selectedKey = Select-SSHKey
+    Set-Content -Path $sshKeyFile -Value $selectedKey
+}
+
 Write-Output "Selected SSH key: $selectedKey"
 Configure-SSH -selectedKey $selectedKey
 
 # Ensure remote URL is using SSH
 git remote set-url origin git@github.com:mittaai/webwright.git
+
+# Check if .openai_token file exists and read the OpenAI API key from it
+$openAITokenFile = ".openai_token"
+if (Test-Path -Path $openAITokenFile) {
+    $env:OPENAI_API_KEY = Get-Content -Path $openAITokenFile -First 1
+}
+
+# If .openai_token file doesn't exist or is empty, prompt for the OpenAI API key and save it
+if (-not $env:OPENAI_API_KEY) {
+    $env:OPENAI_API_KEY = Get-OpenAIAPIKey
+    Set-Content -Path $openAITokenFile -Value $env:OPENAI_API_KEY
+}
 
 Write-Output "Conda environment '$envName' is now active and Git is configured with the selected SSH key."
 
