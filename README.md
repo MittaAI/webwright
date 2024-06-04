@@ -34,3 +34,4 @@ To get started with setting up your website, follow the instructions below:
    ```bash
    git clone git@github.com:youragency/your-repo.git
   ```
+2.
