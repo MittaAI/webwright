@@ -5,17 +5,20 @@ import json
 import time
 import random
 import traceback
+
 from asyncio import get_event_loop, new_event_loop, set_event_loop
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
+
 from lib.util import get_username
 from lib.aifunc import ai
 
 # user
 username = get_username()
+
 # build history and session
 history = FileHistory(".webwright_history")
 session = PromptSession(history=history)
@@ -49,6 +52,9 @@ async def main():
         print("system> Error: OPENAI_API_KEY environment variable not set.")
         return
 
+    # Clear the screen
+    os.system('cls' if os.name == 'nt' else 'clear')  # <-- Add this line
+    
     while True:
         try:
             question = await session.prompt_async(f"{username}[shell]> ")
