@@ -4,10 +4,8 @@ __pycache__/
 *$py.class
 
 # Secrets / configs
-.openai_token
-.ssh_key
+.webwright_config
 .webwright_history
-.auth
 
 # Distribution / packaging / logs
 .Python

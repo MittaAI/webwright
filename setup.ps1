@@ -139,20 +139,45 @@ if (Test-Path -Path $requirementsFile) {
     Write-Warning "Requirements file '$requirementsFile' not found. Skipping package installation."
 }
 
-# Check if .ssh_key file exists and contains a valid SSH key path
-$sshKeyFile = ".ssh_key"
-if (Test-Path -Path $sshKeyFile) {
-    $selectedKey = Get-Content -Path $sshKeyFile -First 1
-    if (-not (Test-Path -Path $selectedKey)) {
-        $selectedKey = $null
+# Function to update the .webwright_config file with the SSH key
+function Update-WebrightConfigSSHKey {
+    param(
+        [string]$configFile,
+        [string]$sshKey
+    )
+
+    $configContent = @()
+    if (Test-Path -Path $configFile) {
+        $configContent = Get-Content -Path $configFile
+        $configContent = $configContent | Where-Object { $_ -notmatch "^ssh_key=" }
+    }
+    $configContent += "ssh_key=$sshKey"
+    $configContent | Set-Content -Path $configFile
+    Write-Output "SSH key saved to .webwright_config file."
+}
+
+# Check if .webwright_config file exists and contains a valid SSH key path
+$configFile = ".webwright_config"
+if (Test-Path -Path $configFile) {
+    $configContent = Get-Content -Path $configFile
+    foreach ($line in $configContent) {
+        if ($line -match "^ssh_key=(.+)$") {
+            $selectedKey = $Matches[1]
+            if (-not (Test-Path -Path $selectedKey)) {
+                $selectedKey = $null
+            }
+            break
+        }
     }
 }
 
-# If .ssh_key file doesn't exist or contains an invalid path, prompt user to select an SSH key
+# If .webwright_config file doesn't exist or contains an invalid path, prompt user to select an SSH key
 if (-not $selectedKey) {
     List-SSHKeys
     $selectedKey = Select-SSHKey
-    Set-Content -Path $sshKeyFile -Value $selectedKey
+    
+    # Save the selected SSH key path to the .webwright_config file
+    Update-WebrightConfigSSHKey -configFile $configFile -sshKey $selectedKey
 }
 
 Write-Output "Selected SSH key: $selectedKey"
@@ -161,19 +186,56 @@ Configure-SSH -selectedKey $selectedKey
 # Ensure remote URL is using SSH
 git remote set-url origin git@github.com:mittaai/webwright.git
 
-# Check if .openai_token file exists and read the OpenAI API key from it
-$openAITokenFile = ".openai_token"
-if (Test-Path -Path $openAITokenFile) {
-    $env:OPENAI_API_KEY = Get-Content -Path $openAITokenFile -First 1
-}
-
-# If .openai_token file doesn't exist or is empty, prompt for the OpenAI API key and save it
-if (-not $env:OPENAI_API_KEY) {
-    $env:OPENAI_API_KEY = Get-OpenAIAPIKey
-    Set-Content -Path $openAITokenFile -Value $env:OPENAI_API_KEY
-}
-
 Write-Output "Conda environment '$envName' is now active and Git is configured with the selected SSH key."
+
+# Function to update the .webwright_config file with the OpenAI API key
+function Update-WebrightConfig {
+    param(
+        [string]$configFile,
+        [string]$openAIApiKey
+    )
+
+    $configContent = @()
+    if (Test-Path -Path $configFile) {
+        $configContent = Get-Content -Path $configFile
+        $configContent = $configContent | Where-Object { $_ -notmatch "^openai_key=" }
+    }
+    $configContent += "openai_key=$openAIApiKey"
+    $configContent | Set-Content -Path $configFile
+    Write-Output "OpenAI API key saved to .webwright_config file."
+}
+
+# Check if .webwright_config file exists and contains a valid OpenAI API key
+$openAIApiKey = $null
+if (Test-Path -Path $configFile) {
+    $configContent = Get-Content -Path $configFile
+    foreach ($line in $configContent) {
+        if ($line -match "^openai_key=(.+)$") {
+            $openAIApiKey = $Matches[1]
+            break
+        }
+    }
+}
+
+# If OpenAI API key is not found in the .webwright_config file or is empty,
+# check if the environment variable is set
+if (-not $openAIApiKey) {
+    if ($env:OPENAI_API_KEY) {
+        $openAIApiKey = $env:OPENAI_API_KEY
+        # Save the API key from the environment variable to the .webwright_config file
+        Update-WebrightConfig -configFile $configFile -openAIApiKey $openAIApiKey
+    }
+    else {
+        # If the environment variable is not set, prompt for the key and save it to the file
+        $openAIApiKey = Get-OpenAIAPIKey
+        Update-WebrightConfig -configFile $configFile -openAIApiKey $openAIApiKey
+    }
+}
+
+# Set the OpenAI API key as an environment variable if it's not already set
+if (-not $env:OPENAI_API_KEY) {
+    $env:OPENAI_API_KEY = $openAIApiKey
+}
 
 # Keep the prompt open
 $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

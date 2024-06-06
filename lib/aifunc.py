@@ -13,7 +13,7 @@ import shutil
 import subprocess
 
 # Configure logging
-logging.basicConfig(filename='webwright.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='logs/webwright.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Import helper functions and decorators
 from lib.function_wrapper import function_info_decorator, tools, callable_registry
