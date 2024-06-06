@@ -152,6 +152,7 @@ function Update-WebrightConfigSSHKey {
         $configContent = $configContent | Where-Object { $_ -notmatch "^ssh_key=" }
     }
     $configContent += "ssh_key=$sshKey"
+    $configContent += ""
     $configContent | Set-Content -Path $configFile
     Write-Output "SSH key saved to .webwright_config file."
 }
@@ -201,6 +202,7 @@ function Update-WebrightConfig {
         $configContent = $configContent | Where-Object { $_ -notmatch "^openai_key=" }
     }
     $configContent += "openai_key=$openAIApiKey"
+    $configContent += ""
     $configContent | Set-Content -Path $configFile
     Write-Output "OpenAI API key saved to .webwright_config file."
 }
