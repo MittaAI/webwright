@@ -12,6 +12,14 @@ import logging
 import shutil
 import subprocess
 
+# Ensure the logs directory exists
+log_dir = 'logs'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+# Configure logging
+logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Configure logging
 logging.basicConfig(filename='logs/webwright.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
