@@ -15,16 +15,24 @@ config.read(".webwright_config")
 username_key = "username"
 
 def set_username(username):
-    config.set("auth", username_key, username)
+    if not config.has_section("config"):
+        config.add_section("config")
+    config.set("config", username_key, username)
     with open(".webwright_config", "w") as configfile:
         config.write(configfile)
     return username
 
 def get_username():
-    if config.has_option("auth", username_key):
-        username = config.get("auth", username_key)
+    if config.has_option("config", username_key):
+        username = config.get("config", username_key)
         print(f"system> You are logged in as `{username}`.")
         return username
     else:
         username = generate_slug(2)
         return set_username(username)
+
+def get_config_value(key):
+    if config.has_option("config", key):
+        return config.get("config", key)
+    else:
+        return None
