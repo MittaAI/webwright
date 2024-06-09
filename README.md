@@ -1,6 +1,7 @@
 # Webwright: Web Automation Done Right 🚀
 
 ## Overview
+Webwright provides a simple command line interface, Docker integration for local development, simple templates for starting out, and interactive diffs and commits to create a new site/app quickly. It is similar to GPT-Engineer and Aider but focused on web only.
 
 ### Local Setup:
 
