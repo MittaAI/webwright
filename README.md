@@ -1,37 +1,79 @@
 # Webwright: Web Automation Done Right 🚀
 
-This project provides command line tools to quickly set up new websites with included templates, automate commits to GitHub, and leverage Google Cloud Run for hosting.
-
 ## Overview
 
-1. **Local Setup**: 
-   - Users download the code to their local machine.
-   - The code provides command line tools to quickly set up a new website.
-   - There are a few website templates included in the `examples` directory.
+### Local Setup:
 
-2. **GitHub Integration**: 
-   - Once the code is committed to GitHub and integrated with Cloud Run, the AI can take over.
+#### Download and Install:
+- Users clone the repository and install via pip:
+  ```
+  pip install webwright
+  ```
+- Provides command line tools for quick website setup.
+- Includes example website templates.
 
-3. **Admin Interface**: 
-   - The website itself has an admin interface for updating the code.
-   - Users can simply talk to the site and tell it what to update about itself.
-   - This allows updates to be done by the owners without involving the support or website creation team.
+### GitHub Integration:
 
-4. **Command Line Tools**: 
-   - These tools allow website creation agencies to create new sites quickly and deploy them for review.
+#### Commit and Integrate:
+- Code committed to GitHub.
+- Integration with Google Cloud Run allows AI automation.
 
-5. **GitHub Storage**: 
-   - The sites are committed to GitHub and are likely stored on the website agency's GitHub account.
+### Admin Interface:
 
-6. **Google Cloud Run Hosting**: 
-   - Google Cloud Run is used on an agency's Google Cloud account to host the site.
+#### Update Website:
+- Admin interface for code updates.
+- Users can update the site via conversational commands.
+- Eliminates the need for a support or creation team for updates.
+
+### Command Line Tools:
+
+#### Quick Creation and Deployment:
+- Tools for website creation agencies to quickly create and deploy sites for review.
+
+### GitHub Storage:
+
+#### Store Sites:
+- Sites are committed to GitHub, typically stored on the agency’s account.
+
+### Google Cloud Run Hosting:
+
+#### Host the Site:
+- Sites are hosted using Google Cloud Run on the agency’s Google Cloud account.
+
+### Code Chaining:
+
+#### Sequential Execution:
+- Allows one step to run another step, creating a chain of commands for automation.
+
+### Function Tools Integration:
+
+#### AI-Assisted Code Writing:
+- Uses OpenAI, Claude, and other models to write and run code, including OpenAI execution calls.
+
+### Local Indexing:
+
+#### Search and Comparison:
+- Locally index the codebase.
+- Use a simple search engine and vector comparisons for indexing and retrieval.
+
+### User Control:
+
+#### Enhanced Control:
+- Functions similarly to autoGPT but with enhanced user control.
+- Focused on websites/webapps.
 
 ## Getting Started
 
-To get started with setting up your website, follow the instructions below:
+### Step-by-Step Instructions:
 
-1. Clone the repository to your local machine:
-   ```bash
-   git clone git@github.com:youragency/your-repo.git
-  ```
+#### Clone the Repository:
 
+```
+git clone git@github.com:youragency/your-repo.git
+```
+
+#### Install Webwright:
+
+```
+pip install webwright
+```
