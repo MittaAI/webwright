@@ -12,16 +12,18 @@ import logging
 import shutil
 import subprocess
 
-# Ensure the logs directory exists
-log_dir = 'logs'
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
+import os
+
+from lib.util import get_anthropic_api_key
+
+# Ensure the .webwright directory exists
+webwright_dir = os.path.expanduser('~/.webwright')
+os.makedirs(webwright_dir, exist_ok=True)
 
 # Configure logging
+log_dir = os.path.join(webwright_dir, 'logs')
+os.makedirs(log_dir, exist_ok=True)
 logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Configure logging
-logging.basicConfig(filename='logs/webwright.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Import helper functions and decorators
 from lib.function_wrapper import function_info_decorator, tools, callable_registry
@@ -372,10 +374,9 @@ def claude_write_code(prompt: str, model: str = "claude-3-opus-20240229") -> dic
     :rtype: dict
     """
     try:
+        anthropic_token = get_anthropic_api_key()
         if not anthropic_token:
-            anthropic_token = os.environ.get('ANTHROPIC_API_KEY')
-            if not anthropic_token:
-                raise ValueError("Anthropic API token not provided and 'ANTHROPIC_API_KEY' environment variable not set.")
+            raise ValueError("Anthropic API token not provided and 'ANTHROPIC_API_KEY' environment variable not set.")
 
         client = Client(api_key=anthropic_token)
 
