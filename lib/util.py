@@ -1,30 +1,33 @@
 import os
 import string
 import random
-import configparser
+from configparser import ConfigParser
 from coolname import generate_slug
 
 def random_string(size=6, chars=string.ascii_letters + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
 
 # Read the .webwright_config file
-config = configparser.ConfigParser()
-config.read(".webwright_config")
+config_file = ".webwright_config"
+config = ConfigParser()
 
-# Get the username
-username_key = "username"
+def read_config():
+    config.read(config_file)
+
+def write_config():
+    with open(config_file, "w") as f:
+        config.write(f)
 
 def set_username(username):
     if not config.has_section("config"):
         config.add_section("config")
-    config.set("config", username_key, username)
-    with open(".webwright_config", "w") as configfile:
-        config.write(configfile)
+    config.set("config", "username", username)
+    write_config()
     return username
 
 def get_username():
-    if config.has_option("config", username_key):
-        username = config.get("config", username_key)
+    if config.has_option("config", "username"):
+        username = config.get("config", "username")
         print(f"system> You are logged in as `{username}`.")
         return username
     else:
@@ -36,3 +39,9 @@ def get_config_value(key):
         return config.get("config", key)
     else:
         return None
+
+# Initialize configuration
+read_config()
+
+# Example usage
+get_username()

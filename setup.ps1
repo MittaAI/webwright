@@ -1,4 +1,3 @@
-# setup.ps1
 param(
     [string]$pythonVersion = "3.8",
     [string]$requirementsFile = "requirements.txt"
@@ -102,15 +101,6 @@ Host github.com
     Write-Output "Global SSH command configuration updated."
 }
 
-# Function to prompt for the OpenAI API key
-function Get-OpenAIAPIKey {
-    $openAIApiKey = $null
-    while ([string]::IsNullOrWhiteSpace($openAIApiKey)) {
-        $openAIApiKey = Read-Host "Please enter your OpenAI API key"
-    }
-    return $openAIApiKey
-}
-
 # Main script
 if (-not (Test-Path -Path "$env:CONDA_EXE")) {
     Write-Error "Conda is not installed or not found in the system PATH."
@@ -188,56 +178,6 @@ Configure-SSH -selectedKey $selectedKey
 git remote set-url origin git@github.com:mittaai/webwright.git
 
 Write-Output "Conda environment '$envName' is now active and Git is configured with the selected SSH key."
-
-# Function to update the .webwright_config file with the OpenAI API key
-function Update-WebrightConfig {
-    param(
-        [string]$configFile,
-        [string]$openAIApiKey
-    )
-
-    $configContent = @()
-    if (Test-Path -Path $configFile) {
-        $configContent = Get-Content -Path $configFile
-        $configContent = $configContent | Where-Object { $_ -notmatch "^openai_key=" }
-    }
-    $configContent += "openai_key=$openAIApiKey"
-    $configContent += ""
-    $configContent | Set-Content -Path $configFile
-    Write-Output "OpenAI API key saved to .webwright_config file."
-}
-
-# Check if .webwright_config file exists and contains a valid OpenAI API key
-$openAIApiKey = $null
-if (Test-Path -Path $configFile) {
-    $configContent = Get-Content -Path $configFile
-    foreach ($line in $configContent) {
-        if ($line -match "^openai_key=(.+)$") {
-            $openAIApiKey = $Matches[1]
-            break
-        }
-    }
-}
-
-# If OpenAI API key is not found in the .webwright_config file or is empty,
-# check if the environment variable is set
-if (-not $openAIApiKey) {
-    if ($env:OPENAI_API_KEY) {
-        $openAIApiKey = $env:OPENAI_API_KEY
-        # Save the API key from the environment variable to the .webwright_config file
-        Update-WebrightConfig -configFile $configFile -openAIApiKey $openAIApiKey
-    }
-    else {
-        # If the environment variable is not set, prompt for the key and save it to the file
-        $openAIApiKey = Get-OpenAIAPIKey
-        Update-WebrightConfig -configFile $configFile -openAIApiKey $openAIApiKey
-    }
-}
-
-# Set the OpenAI API key as an environment variable if it's not already set
-if (-not $env:OPENAI_API_KEY) {
-    $env:OPENAI_API_KEY = $openAIApiKey
-}
 
 # Keep the prompt open
 $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

@@ -12,6 +12,14 @@ import logging
 import shutil
 import subprocess
 
+# Ensure the logs directory exists
+log_dir = 'logs'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+# Configure logging
+logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Configure logging
 logging.basicConfig(filename='logs/webwright.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -83,6 +91,21 @@ def i_have_failed_my_purpose(error_reason: str) -> dict:
         "success": False,
         "error": "Operation failed",
         "reason": error_reason
+    }
+
+@function_info_decorator
+def chat(assistant_response: str) -> dict:
+    """
+    Returns a dictionary containing the assistant's response.
+    :param assistant_response: The assistant's response message.
+    :type assistant_response: str
+    :return: A dictionary containing the assistant's response.
+    :rtype: dict
+    """
+    logging.info("in chat")
+    return {
+        "success": True,
+        "response": assistant_response
     }
 
 @function_info_decorator
@@ -332,6 +355,61 @@ def write_code_to_file(file_path: str, code: str) -> dict:
             "reason": str(e)
         }
 
+from anthropic import Client
+
+@function_info_decorator
+def claude_write_code(prompt: str, model: str = "claude-3-opus-20240229") -> dict:
+    """
+    Generates code using Claude's API based on the provided prompt.
+    
+    :param prompt: The detailed prompt outlining the steps or requirements for the code.
+    :type prompt: str
+    :param model: The name of the Claude model to use for code generation. Defaults to "claude-3-opus-20240229".
+    :type model: str
+    :param anthropic_token: The Anthropic API token to use for authentication. If not provided, it will be retrieved from the environment variable 'ANTHROPIC_API_KEY'.
+    :type anthropic_token: str
+    :return: A dictionary containing the success status and the generated code.
+    :rtype: dict
+    """
+    try:
+        if not anthropic_token:
+            anthropic_token = os.environ.get('ANTHROPIC_API_KEY')
+            if not anthropic_token:
+                raise ValueError("Anthropic API token not provided and 'ANTHROPIC_API_KEY' environment variable not set.")
+
+        client = Client(api_key=anthropic_token)
+
+        system_prompt = "You are a helpful assistant that generates code based on the provided prompt."
+        messages = [{"role": "user", "content": prompt}]
+
+        response = client.messages.create(
+            model=model,
+            max_tokens=2048,
+            messages=messages,
+            system=system_prompt
+        )
+
+        content_blocks = response.content
+        if content_blocks:
+            generated_code = ''.join(block.text for block in content_blocks)
+            return {
+                "success": True,
+                "code": generated_code,
+            }
+        else:
+            return {
+                "success": False,
+                "error": "Failed to generate code",
+                "reason": "Claude's API returned empty content blocks.",
+            }
+
+    except Exception as e:
+        logging.error(f"Error generating code with Claude's API: {str(e)}")
+        return {
+            "success": False,
+            "error": "Failed to generate code",
+            "reason": str(e),
+        }
 
 @function_info_decorator
 def git_commit_and_push(commit_message: str = "Automated commit") -> dict:
@@ -377,9 +455,33 @@ def git_commit_and_push(commit_message: str = "Automated commit") -> dict:
             "error": str(e)
         }
 
+@retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
+async def process_results(results: dict, function_info: dict, openai_token: str) -> str:
+    try:
+        if "success" in results and results["success"]:
+            messages = [
+                {"role": "system", "content": "You are an AI assistant that helps explain the results of executed commands.\n\nSome commands, like 'help', output a list of available commands, so you may need to explain what each command does.\n\nSometimes, the functions output code, like between python``` and ```. In that case, you should output the code, and anything else said. Keep your explanations very short and clear, focusing on what a user would expect to see when a command outputs something.\n\nAvoid going into technical details or explaining the underlying functions. Just provide a concise, user-friendly description.\n\nIf there is a clear, direct answer, put it on its own line for emphasis.\n\nIf a command runs a program or script, be sure to include the output.\n\nDo not refer to the commands as functions or show the actual function calls, as users interact with these commands through a chat interface."},
+                {"role": "user", "content": f"\n\n{json.dumps(results, indent=2)}\n\n{json.dumps(function_info, indent=2)}\n\n"}
+            ]
+
+            chat_response = await chat_completion_request_async(messages=messages, openai_token=openai_token)
+            assistant_response = chat_response.choices[0].message.content.strip()
+            return assistant_response
+        else:
+            if "response" in results:
+                return results.get('response')
+            if "error" in results:
+                error_message = results.get('error')
+                reason = results.get('reason')
+                return f"The function execution failed with the following error: {error_message} {reason}"
+            else:
+                return "The function execution failed with an unknown error."
+    except Exception as e:
+        raise Exception(f"Error processing results: {str(e)}") from e
+
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def chat_completion_request_async(messages=None, openai_token=None, tools=None, tool_choice=None, model="gpt-3.5-turbo-1106"):
+async def chat_completion_request_async(messages=None, openai_token=None, tools=None, tool_choice=None, model="gpt-4o"):
     """
     Make an asynchronous request to OpenAI's chat completion API.
     """
@@ -412,7 +514,7 @@ async def ai(username="anonymous", query="screenshot mitta.ai", openai_token="",
     create_and_check_directory(user_dir)
 
     messages = [
-        {"role": "system", "content": "You are an AI bot that picks functions to call based on the command query. Don't make assumptions, stay focused, set attention, and receive gratitude for well-formed responses. Only extract links if explicitly stated. 'thumb' or 'thumbnail' or 'small' means DO NOT use full_screen capture, which sets the full_screen parameter to False and gives us a thumbnail of the top of the page. If someone wants 'full' or 'full screen' or 'big', we set the full_screen parameter to True to do a full screen capture. If OCR readability is requested with keywords like 'OCR' or 'readable', set the ocr_readable parameter to True. If dark mode is requested with keywords like 'dark mode' or 'black background', set the dark_mode parameter to True. On failure to purpose, you become Dr. Gregory House, AI crawler extraordinaire."},
+        {"role": "system", "content": "You are an AI bot that picks functions to call based on the command query. Don't make assumptions, stay focused, set attention for well-formed responses. If there doesn't appear to be a function to call, you can simply answer the user using the chat funciton. If asked to write an expression for calculations, consider writing the expression in Python."},
         {"role": "user", "content": query}
     ]
     
@@ -450,6 +552,7 @@ async def ai(username="anonymous", query="screenshot mitta.ai", openai_token="",
 
             # Move 'arguments' into the 'results' dictionary
             results['arguments'] = arguments
+            results['function_name'] = function_name
 
             return True, results
         
