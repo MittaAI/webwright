@@ -14,7 +14,7 @@ from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
 
 from lib.util import get_username
-from lib.aifunc import ai
+from lib.aifunc import ai, process_results
 
 # user
 username = get_username()
@@ -24,6 +24,7 @@ history = FileHistory(".webwright_history")
 session = PromptSession(history=history)
 
 
+"""
 async def process_shell_query(username, query, openai_token):
     print("system> Calling GPTChat for command...please wait.")
     try:
@@ -44,6 +45,24 @@ async def process_shell_query(username, query, openai_token):
                 print(f"system> Operation failed: {failure_reason}")
     except Exception as e:
         print(f"system> Error: {e}")
+"""
+
+async def process_shell_query(username, query, openai_token):
+    print("system> Calling GPTChat for command...please wait.")
+    try:
+        success, results = await ai(username=username, query=query, openai_token=openai_token)
+        if success:
+            function_info = results.get("arguments", {}).get("function_info", {})
+            explanation = await process_results(results, function_info, openai_token)
+            print(f"system> {explanation}")
+        else:
+            if "error" in results:
+                error_message = results["error"]
+                print(f"system> Error: {error_message}")
+            else:
+                print("system> An unknown error occurred.")
+    except Exception as e:
+        print(f"system> Error: {str(e)}")
 
 
 async def main():

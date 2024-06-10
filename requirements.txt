@@ -6,3 +6,4 @@ openai
 openai[datalib]
 tenacity
 flask
+anthropic
