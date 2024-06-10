@@ -97,6 +97,7 @@ get_openai_api_key() {
     echo "$openAIApiKey"
 }
 
+<<<<<<< HEAD
 
 # Function to prompt for the Anthropic API key
 get_anthropic_api_key() {
@@ -108,6 +109,8 @@ get_anthropic_api_key() {
 }
 
 
+=======
+>>>>>>> 5f37e36d76078c2768ea069b4caf4be600f3e5ec
 # Main script
 if ! command -v conda &> /dev/null; then
     echo "Conda is not installed or not found in the system PATH." >&2
@@ -187,7 +190,11 @@ git remote set-url origin git@github.com:mittaai/webwright.git
 echo "Conda environment '$envName' is now active and Git is configured with the selected SSH key."
 
 # Function to update the .webwright_config file with the OpenAI API key
+<<<<<<< HEAD
 update_webright_config_openai() {
+=======
+update_webright_config() {
+>>>>>>> 5f37e36d76078c2768ea069b4caf4be600f3e5ec
     configFile="$1"
     openAIApiKey="$2"
 
@@ -211,11 +218,19 @@ if [ -z "$openAIApiKey" ]; then
     if [ -n "$OPENAI_API_KEY" ]; then
         openAIApiKey="$OPENAI_API_KEY"
         # Save the API key from the environment variable to the .webwright_config file
+<<<<<<< HEAD
         update_webright_config_openai "$configFile" "$openAIApiKey"
     else
         # If the environment variable is not set, prompt for the key and save it to the file
         openAIApiKey=$(get_openai_api_key)
         update_webright_config_openai "$configFile" "$openAIApiKey"
+=======
+        update_webright_config "$configFile" "$openAIApiKey"
+    else
+        # If the environment variable is not set, prompt for the key and save it to the file
+        openAIApiKey=$(get_openai_api_key)
+        update_webright_config "$configFile" "$openAIApiKey"
+>>>>>>> 5f37e36d76078c2768ea069b4caf4be600f3e5ec
     fi
 fi
 
@@ -224,6 +239,7 @@ if [ -z "$OPENAI_API_KEY" ]; then
     export OPENAI_API_KEY="$openAIApiKey"
 fi
 
+<<<<<<< HEAD
 # Function to update the .webwright_config file with the Anthropic API key
 update_webright_config_anthropic() {
     configFile="$1"
@@ -262,5 +278,7 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     export ANTHROPIC_API_KEY="$anthropicApiKey"
 fi
 
+=======
+>>>>>>> 5f37e36d76078c2768ea069b4caf4be600f3e5ec
 # Keep the script running until a key is pressed
 read -n1 -s -r -p "Press any key to continue..."
