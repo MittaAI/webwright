@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import pprint
 import json
 import time
@@ -19,10 +20,15 @@ from lib.aifunc import ai, process_results
 webwright_dir = os.path.expanduser('~/.webwright')
 os.makedirs(webwright_dir, exist_ok=True)
 
-# user
+# Setup logging
+log_dir = os.path.join(webwright_dir, 'logs')
+os.makedirs(log_dir, exist_ok=True)
+logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# User
 username = get_username()
 
-# build history and session
+# Build history and session
 history_file = os.path.join(webwright_dir, '.webwright_history')
 history = FileHistory(history_file)
 session = PromptSession(history=history)
@@ -33,16 +39,21 @@ async def process_shell_query(username, query, openai_token, anthropic_token):
         success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token)
         if success:
             function_info = results.get("arguments", {}).get("function_info", {})
-            explanation = await process_results(results, function_info, openai_token, anthropic_token)
+            explanation = await process_results(results, function_info, openai_token)
             print(f"system> {explanation}")
         else:
             if "error" in results:
                 error_message = results["error"]
                 print(f"system> Error: {error_message}")
+                logging.error(f"Error: {error_message}")
             else:
                 print("system> An unknown error occurred.")
     except Exception as e:
-        print(f"system> Error: {str(e)}")
+        error_message = f"system> Error: {str(e)}"
+        print(error_message)
+        logging.error(error_message)
+        logging.error(traceback.format_exc())
+
 
 async def main():
     openai_token = get_openai_api_key()
@@ -80,9 +91,24 @@ async def main():
                 pass  # Ignore the exception if the event loop is closed
             else:
                 raise  # Re-raise the exception for other RuntimeError instances
+        except Exception as e:
+            error_message = f"system> Error: {str(e)}"
+            print(error_message)
+            logging.error(error_message)
+            logging.error(traceback.format_exc())
 
 def entry_point():
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("system> Exiting gracefully...")
+        # Cancel all running tasks
+        for task in asyncio.all_tasks():
+            task.cancel()
+        # Ensure the event loop is closed
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
 
 if __name__ == "__main__":
     entry_point()
