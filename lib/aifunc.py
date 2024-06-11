@@ -503,7 +503,7 @@ def random_string(length=13):
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
 
-async def ai(username="anonymous", query="screenshot mitta.ai", openai_token="", upload_dir=UPLOAD_DIR):
+async def ai(username="anonymous", query="screenshot mitta.ai", openai_token="", anthropic_token="", upload_dir=UPLOAD_DIR):
     """
     Process a given query with OpenAI and execute a function based on the response.
     """
