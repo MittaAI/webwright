@@ -1,10 +1,11 @@
-# function_wrapper.py
-
 import ast
 import inspect
+import os
+import importlib.util
+import logging
 
 tools = []  # A registry to hold all decorated functions' info
-callable_registry = {} # A registry to hold the functions themselves
+callable_registry = {}  # A registry to hold the functions themselves
 
 class FunctionWrapper:
     def __init__(self, func):
@@ -95,3 +96,23 @@ def function_info_decorator(func):
         return wrapped_function(*args, **kwargs)
     wrapper.function_info = wrapped_function.info
     return wrapper
+
+def load_functions_from_directory(directory):
+    for filename in os.listdir(directory):
+        if filename.endswith(".py") and filename != "__init__.py":
+            module_name = filename[:-3]
+            module_path = os.path.join(directory, filename)
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            module = importlib.util.module_from_spec(spec)
+            try:
+                spec.loader.exec_module(module)
+                for attr in dir(module):
+                    func = getattr(module, attr)
+                    if callable(func) and hasattr(func, 'function_info'):
+                        logging.info(f"Loaded function: {func.__name__}")
+            except Exception as e:
+                logging.error(f"Failed to load module {module_name}: {e}")
+
+# Load all functions from the lib/functions directory
+functions_directory = os.path.join(os.path.dirname(__file__), 'functions')
+load_functions_from_directory(functions_directory)

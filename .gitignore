@@ -1,3 +1,7 @@
+# Storage
+set_store.json
+vector_store.json
+
 # Byte-compiled
 __pycache__/
 *.py[cod]

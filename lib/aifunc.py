@@ -11,6 +11,7 @@ import logging
 
 import shutil
 import subprocess
+import importlib
 
 import os
 
@@ -95,6 +96,7 @@ def i_have_failed_my_purpose(error_reason: str) -> dict:
         "reason": error_reason
     }
 
+
 @function_info_decorator
 def chat(assistant_response: str) -> dict:
     """
@@ -109,6 +111,7 @@ def chat(assistant_response: str) -> dict:
         "success": True,
         "response": assistant_response
     }
+
 
 @function_info_decorator
 def help() -> dict:
@@ -137,41 +140,6 @@ def help() -> dict:
         "success": True,
         "functions": help_info
     }
-
-
-@function_info_decorator
-def calculate(expression: str) -> dict:
-    """
-    Calculates the result of a given mathematical expression.
-
-    :param expression: The mathematical expression to evaluate.
-    :type expression: str
-    :return: A dictionary containing the result of the calculation.
-    :rtype: dict
-    """
-    try:
-        # Evaluate the expression using eval()
-        result = eval(expression)
-        return {
-            "success": True,
-            "result": result
-        }
-    except (SyntaxError, ZeroDivisionError, NameError, TypeError, ValueError) as e:
-        # Handle specific exceptions and return an error message
-        error_message = str(e)
-        return {
-            "success": False,
-            "error": "Invalid expression",
-            "reason": error_message
-        }
-    except Exception as e:
-        # Handle any other unexpected exceptions
-        error_message = str(e)
-        return {
-            "success": False,
-            "error": "Calculation failed",
-            "reason": error_message
-        }
 
 
 @function_info_decorator
@@ -498,9 +466,24 @@ async def chat_completion_request_async(messages=None, openai_token=None, tools=
         return None
 
 
-def random_string(length=13):
-    """Generate a random string of fixed length."""
-    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
+# Directory where the function files are located
+FUNCTIONS_DIR = 'lib.functions'
+
+def load_function(function_name):
+    try:
+        module_name = f"{FUNCTIONS_DIR}.{function_name}"
+        module = importlib.import_module(module_name)
+        return getattr(module, function_name)
+    except (ImportError, AttributeError) as e:
+        raise ValueError(f"Function {function_name} not found: {e}")
+
+
+async def execute_function(function_name, **kwargs):
+    try:
+        function_to_call = load_function(function_name)
+        return function_to_call(**kwargs)
+    except ValueError as e:
+        return json.dumps({"error": str(e)})
 
 
 async def ai(username="anonymous", query="screenshot mitta.ai", openai_token="", anthropic_token="", upload_dir=UPLOAD_DIR):
@@ -515,11 +498,11 @@ async def ai(username="anonymous", query="screenshot mitta.ai", openai_token="",
     create_and_check_directory(user_dir)
 
     messages = [
-        {"role": "system", "content": "You are an AI bot that picks functions to call based on the command query. Don't make assumptions, stay focused, set attention for well-formed responses. If there doesn't appear to be a function to call, you can simply answer the user using the chat funciton. If asked to write an expression for calculations, consider writing the expression in Python."},
+        {"role": "system", "content": "You are an AI bot that picks functions to call based on the command query. Don't make assumptions, stay focused, set attention for well-formed responses. If there doesn't appear to be a function to call, you can simply answer the user using the chat function. If asked to write an expression for calculations, consider writing the expression in Python."},
         {"role": "user", "content": query}
     ]
     
-    # get the function and parameters to call
+    # Get the function and parameters to call
     chat_response = await chat_completion_request_async(messages=messages, openai_token=openai_token, tools=tools)
 
     logging.info(chat_response)
@@ -536,26 +519,16 @@ async def ai(username="anonymous", query="screenshot mitta.ai", openai_token="",
         arguments_json = chat_response.choices[0].message.tool_calls[0].function.arguments
         arguments = json.loads(arguments_json)
 
-        if function_name == "i_have_failed_my_purpose":
-            json_results_str = await execute_function_by_name(function_name, **arguments)
-            results = json.loads(json_results_str) if not isinstance(json_results_str, dict) else json_results_str
+        json_results_str = await execute_function(function_name, **arguments)
+        logging.info(json_results_str)
 
-            # Move 'arguments' into the 'results' dictionary
-            results['arguments'] = arguments
-            
-            return False, results
+        results = json.loads(json_results_str) if not isinstance(json_results_str, dict) else json_results_str
 
-        else:
-            json_results_str = await execute_function_by_name(function_name, **arguments)
-            logging.info(json_results_str)
+        # Move 'arguments' into the 'results' dictionary
+        results['arguments'] = arguments
+        results['function_name'] = function_name
 
-            results = json.loads(json_results_str) if not isinstance(json_results_str, dict) else json_results_str
-
-            # Move 'arguments' into the 'results' dictionary
-            results['arguments'] = arguments
-            results['function_name'] = function_name
-
-            return True, results
+        return True, results
         
     except Exception as ex:
         logging.info("ERRRORORRRRR")

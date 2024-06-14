@@ -61,6 +61,11 @@ def get_username():
 
 # Function to setup SSH key
 def setup_ssh_key():
+    saved_ssh_key = get_config_value("config", "SSH_KEY")
+    if saved_ssh_key:
+        print(f"system> Using saved SSH key: {saved_ssh_key}")
+        return
+
     ssh_directory = os.path.expanduser("~/.ssh")
     if not os.path.exists(ssh_directory):
         print("system> No SSH keys found.")

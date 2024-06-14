@@ -103,12 +103,16 @@ def entry_point():
     except KeyboardInterrupt:
         print("system> Exiting gracefully...")
         # Cancel all running tasks
-        for task in asyncio.all_tasks():
+        tasks = [task for task in asyncio.all_tasks() if not task.done()]
+        for task in tasks:
             task.cancel()
         # Ensure the event loop is closed
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
+        if not loop.is_closed():
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            loop.close()
+    finally:
+        print("system> Shutdown complete.")
 
 if __name__ == "__main__":
     entry_point()
