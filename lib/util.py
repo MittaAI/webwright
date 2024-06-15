@@ -41,6 +41,21 @@ def get_config_value(section, key):
         return config.get(section, key)
     return None
 
+# Function to list files in a directory
+def list_files(directory):
+    file_list = []
+    for root, dirs, files in os.walk(directory):
+        # Filter out __pycache__ directories
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        
+        for file in files:
+            # Filter out .pyc files
+            if not (file.endswith(".pyc") or file.startswith(".")):
+                file_path = os.path.join(root, file)
+                file_list.append(file_path)
+    
+    return file_list
+
 # Function to generate a random string
 def random_string(size=6, chars=string.ascii_letters + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))

@@ -7,6 +7,7 @@ import time
 import random
 import traceback
 import asyncio
+import openai
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from pygments import highlight
@@ -14,7 +15,26 @@ from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
 from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key
 from lib.util import get_username
-from lib.aifunc import ai, process_results
+from halo import Halo
+
+try:
+    from lib.aifunc import ai, process_results
+    from git import Repo
+except ImportError as e:
+    if 'git' in str(e):
+        print("system> Git executable not found.")
+        print("system> Please install Git using the following steps:")
+        print("1. Install Conda from https://docs.conda.io/en/latest/miniconda.html")
+        print("2. Create and activate a Conda environment:")
+        print("   conda create -n myenv python=3.10")
+        print("   conda activate myenv")
+        print("3. Install Git in the Conda environment:")
+        print("   conda install git")
+        print("4. Restart webwright:")
+        print("   webwright")
+        sys.exit(1)
+    else:
+        raise
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -33,10 +53,12 @@ history_file = os.path.join(webwright_dir, '.webwright_history')
 history = FileHistory(history_file)
 session = PromptSession(history=history)
 
-async def process_shell_query(username, query, openai_token, anthropic_token):
-    print("system> Calling GPTChat for command...please wait.")
+async def process_shell_query(username, query, openai_token, anthropic_token, thread_id):
+    spinner = Halo(text='Calling GPTChat for command...please wait.', spinner='dots')
+    spinner.start()
     try:
-        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token)
+        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, thread_id=thread_id)
+        spinner.stop()
         if success:
             function_info = results.get("arguments", {}).get("function_info", {})
             explanation = await process_results(results, function_info, openai_token)
@@ -49,11 +71,11 @@ async def process_shell_query(username, query, openai_token, anthropic_token):
             else:
                 print("system> An unknown error occurred.")
     except Exception as e:
+        spinner.stop()
         error_message = f"system> Error: {str(e)}"
         print(error_message)
         logging.error(error_message)
         logging.error(traceback.format_exc())
-
 
 async def main():
     openai_token = get_openai_api_key()
@@ -71,6 +93,13 @@ async def main():
     # Clear the screen
     os.system('cls' if os.name == 'nt' else 'clear')
     
+    # Initialize the OpenAI client with the API key
+    openai.api_key = openai_token
+
+    # Create a new thread
+    thread = openai.beta.threads.create()
+    thread_id = thread.id
+    
     while True:
         try:
             question = await session.prompt_async(f"{username}[shell]> ")
@@ -81,8 +110,9 @@ async def main():
             
             if question.strip() == 'quit' or question.strip() == 'exit':
                 print("system> Bye!")
-                sys.exit()
-            await process_shell_query(username, question, openai_token, anthropic_token)
+                return
+            
+            await process_shell_query(username, question, openai_token, anthropic_token, thread_id)
         except KeyboardInterrupt:
             print("system>", random.choice(["Bye!", "Later!", "Nice working with you."]))
             break
@@ -111,6 +141,10 @@ def entry_point():
         if not loop.is_closed():
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.close()
+    except Exception as e:
+        print(f"system> Error during shutdown: {str(e)}")
+        logging.error(f"Error during shutdown: {str(e)}")
+        logging.error(traceback.format_exc())
     finally:
         print("system> Shutdown complete.")
 
