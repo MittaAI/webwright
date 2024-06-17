@@ -9,10 +9,13 @@ import traceback
 import asyncio
 import openai
 from prompt_toolkit import PromptSession
+from prompt_toolkit import print_formatted_text
 from prompt_toolkit.history import FileHistory
+from prompt_toolkit.formatted_text import FormattedText, PygmentsTokens
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
+
 from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key
 from lib.util import get_username
 from halo import Halo
@@ -53,16 +56,19 @@ history_file = os.path.join(webwright_dir, '.webwright_history')
 history = FileHistory(history_file)
 session = PromptSession(history=history)
 
-async def process_shell_query(username, query, openai_token, anthropic_token, thread_id):
+async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history):
     spinner = Halo(text='Calling GPTChat for command...please wait.', spinner='dots')
     spinner.start()
+    
     try:
-        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, thread_id=thread_id)
+        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, history=conversation_history)
+        
         spinner.stop()
+        
         if success:
             function_info = results.get("arguments", {}).get("function_info", {})
             explanation = await process_results(results, function_info, openai_token)
-            print(f"system> {explanation}")
+            return True, {"explanation": explanation}
         else:
             if "error" in results:
                 error_message = results["error"]
@@ -70,12 +76,41 @@ async def process_shell_query(username, query, openai_token, anthropic_token, th
                 logging.error(f"Error: {error_message}")
             else:
                 print("system> An unknown error occurred.")
+            return False, {"error": error_message}
     except Exception as e:
         spinner.stop()
         error_message = f"system> Error: {str(e)}"
         print(error_message)
         logging.error(error_message)
         logging.error(traceback.format_exc())
+        return False, {"error": error_message}
+
+
+def format_response(response):
+    formatted_text = FormattedText()
+    lines = response.split('\n')
+    in_code_block = False
+    code_lines = []
+
+    for line in lines:
+        if line.startswith('```python'):
+            in_code_block = True
+            continue
+        elif line.startswith('```') and in_code_block:
+            in_code_block = False
+            formatted_text.append(PygmentsTokens(PythonLexer().get_tokens(''.join(code_lines))))
+            formatted_text.append(('', '\n'))
+            code_lines = []
+        elif in_code_block:
+            code_lines.append(line + '\n')
+        else:
+            if line.startswith('**'):
+                formatted_text.append(('bold', line[2:-2]))
+                formatted_text.append(('', '\n'))
+            else:
+                formatted_text.append(('', line + '\n'))
+
+    return formatted_text
 
 async def main():
     openai_token = get_openai_api_key()
@@ -93,12 +128,7 @@ async def main():
     # Clear the screen
     os.system('cls' if os.name == 'nt' else 'clear')
     
-    # Initialize the OpenAI client with the API key
-    openai.api_key = openai_token
-
-    # Create a new thread
-    thread = openai.beta.threads.create()
-    thread_id = thread.id
+    conversation_history = []  # Initialize conversation history
     
     while True:
         try:
@@ -110,9 +140,21 @@ async def main():
             
             if question.strip() == 'quit' or question.strip() == 'exit':
                 print("system> Bye!")
-                return
+                sys.exit()
             
-            await process_shell_query(username, question, openai_token, anthropic_token, thread_id)
+            conversation_history.append({"role": "user", "content": question})  # Append user's question to conversation history
+            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history)
+            
+            if success and "explanation" in results:
+                print(f"system> {results['explanation']}")
+                conversation_history.append({"role": "assistant", "content": results["explanation"]})  # Append AI's response to conversation history
+            else:
+                if success and "explanation" in results:
+                    formatted_response = format_response(results['explanation'])
+                    print(to_formatted_text(formatted_response))
+                    conversation_history.append({"role": "assistant", "content": results["explanation"]})  # Append AI's response to conversation history
+                else:
+                    print("system> An unknown error occurred.")
         except KeyboardInterrupt:
             print("system>", random.choice(["Bye!", "Later!", "Nice working with you."]))
             break
@@ -126,6 +168,7 @@ async def main():
             print(error_message)
             logging.error(error_message)
             logging.error(traceback.format_exc())
+
 
 def entry_point():
     try:

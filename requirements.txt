@@ -12,3 +12,5 @@ transformers
 sentence_transformers==2.2.2
 InstructorEmbedding
 Halo
+PyGithub
+gitpython

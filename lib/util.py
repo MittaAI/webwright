@@ -5,6 +5,16 @@ import shutil
 from configparser import ConfigParser
 from coolname import generate_slug
 
+# Ensure the .webwright directory exists
+webwright_dir = os.path.expanduser('~/.webwright')
+os.makedirs(webwright_dir, exist_ok=True)
+
+# Configure logging
+import logging
+log_dir = os.path.join(webwright_dir, 'logs')
+os.makedirs(log_dir, exist_ok=True)
+logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 # Constants for configuration directory and file
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".webwright")
 CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, ".webwright_config")
@@ -40,6 +50,22 @@ def get_config_value(section, key):
     if config.has_option(section, key):
         return config.get(section, key)
     return None
+
+# ensure directory exists
+def create_and_check_directory(directory_path):
+    try:
+        os.makedirs(directory_path, exist_ok=True)
+        logging.info(f"Directory '{directory_path}' ensured to exist.")
+        if os.path.isdir(directory_path):
+            logging.info(f"Confirmed: The directory '{directory_path}' exists.")
+        else:
+            logging.error(f"Error: The directory '{directory_path}' was not found after creation attempt.")
+    except Exception as e:
+        logging.error(f"An error occurred while creating the directory: {e}")
+
+def extract_urls(query):
+    url_pattern = re.compile(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+')
+    return url_pattern.findall(query)
 
 # Function to list files in a directory
 def list_files(directory):
