@@ -1,4 +1,3 @@
-# lib/functions/create_github_issue.py
 import os
 import subprocess
 from github import Github
@@ -8,13 +7,15 @@ from lib.util import get_logger
 logger = get_logger()
 
 @function_info_decorator
-def create_github_issue(issue_title: str, issue_body: str) -> dict:
+def manage_github_issue(issue_title: str, issue_body: str, comment_body: str) -> dict:
     """
-    Creates a new issue for the repository in the current directory.
+    Creates a new issue, comments on the issue, and closes the issue for the repository in the current directory.
     :param issue_title: The title of the issue.
     :type issue_title: str
     :param issue_body: The body content of the issue.
     :type issue_body: str
+    :param comment_body: The comment to add to the issue.
+    :type comment_body: str
     :return: A dictionary containing the status of the operation and additional information.
     :rtype: dict
     """
@@ -49,9 +50,15 @@ def create_github_issue(issue_title: str, issue_body: str) -> dict:
                 body=issue_body
             )
             
+            # Comment on the issue
+            issue.create_comment(body=comment_body)
+            
+            # Close the issue
+            issue.edit(state="closed")
+            
             return {
                 "success": True,
-                "message": f"Issue '{issue_title}' created for repository '{org_name}/{repo_name}'",
+                "message": f"Issue '{issue_title}' created, commented on, and closed for repository '{org_name}/{repo_name}'",
                 "issue_url": issue.html_url
             }
         else:
@@ -63,14 +70,12 @@ def create_github_issue(issue_title: str, issue_body: str) -> dict:
     except Exception as e:
         return {
             "success": False,
-            "error": "Failed to create GitHub issue",
+            "error": "Failed to manage GitHub issue",
             "reason": str(e)
         }
 
 def extract_repo_info(remote_url):
-    print(remote_url)
     # Extract the organization/user and repository name from the remote URL
-    
     if remote_url.startswith("https://github.com/"):
         org_repo = remote_url[len("https://github.com/"):]
     elif remote_url.startswith("git@github.com:"):
@@ -82,7 +87,5 @@ def extract_repo_info(remote_url):
     if org_repo.endswith(".git"):
         org_repo = org_repo[:-4]
     
-    print(org_repo)
     org_name, repo_name = org_repo.split("/")
-    print(org_name, repo_name)
     return org_name, repo_name
