@@ -83,8 +83,13 @@ async def chat_completion_request_async(messages=None, openai_token=None, tools=
     """
     client = openai.AsyncOpenAI(api_key=openai_token)
 
-    logging.info("tools")
-    logging.info(tools)
+    if tools:
+        # Extract the function names from the `tools` list
+        function_names = [tool['function']['name'] for tool in tools]
+
+        # Log the list of function names
+        logging.info("Available functions:")
+        logging.info(function_names)
 
     try:
         return await client.chat.completions.create(model=model, messages=messages, tools=tools, tool_choice=tool_choice)
@@ -100,25 +105,18 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
     if not openai_token:
         raise ValueError("OpenAI token is required")
     
-    # log the history
-    logging.info("HISTORY")
-    logging.info(history)
-    
     # Ensure the upload directory and the username directory under that exist
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
     
     messages = [
-        {"role": "system", "content": "You are an AI bot that picks functions to call based on the command query. Don't make assumptions, stay focused, set attention for well-formed responses. If there doesn't appear to be a function to call, you can simply answer the user using the chat function. If asked to write an expression for calculations, consider writing the expression in Python."}
+        {"role": "system", "content": "You are an AI bot that picks functions to call based on the command query. If the function requires a follow-up function, include that in the arguments with a 'follow_up_function' key and value. Don't make assumptions, stay focused, and provide well-formed responses. If there doesn't appear to be a function to call, you can simply answer the user using the chat function."}
     ]
     
     if history:
         messages.extend(history)
     
     messages.append({"role": "user", "content": query})
-    
-    logging.info("MESSAGES")
-    logging.info(messages)
 
     # Get the function and parameters to call
     chat_response = await chat_completion_request_async(messages=messages, openai_token=openai_token, tools=tools)
@@ -131,9 +129,13 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         
     # Assume function_name and arguments are extracted from chat_response
     try:
-        function_name = chat_response.choices[0].message.tool_calls[0].function.name
-        arguments_json = chat_response.choices[0].message.tool_calls[0].function.arguments
+        function_call = chat_response.choices[0].message.tool_calls[0].function
+        function_name = function_call.name
+        arguments_json = function_call.arguments
         arguments = json.loads(arguments_json)
+        
+        # Extract follow-up function if present
+        follow_up_function = arguments.pop('follow_up_function', None)
         
         spinner = Halo(text='Executing function...', spinner='dots')
         spinner.start()
@@ -143,13 +145,15 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         
         results = json.loads(json_results_str) if not isinstance(json_results_str, dict) else json_results_str
 
-        # Move 'arguments' into the 'results' dictionary
+        # Move 'arguments' and 'follow_up_function' into the 'results' dictionary
         results['arguments'] = arguments
         results['function_name'] = function_name
+        if follow_up_function:
+            results['follow_up_function'] = follow_up_function
         return True, results
         
     except Exception as ex:
-        logging.info("ERRRORORRRRR")
+        logging.info("ERROR")
         logging.info(ex)
         # Return False and the error message
         return False, {'error': str(ex)}

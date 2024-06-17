@@ -31,6 +31,13 @@ class FunctionWrapper:
             }
             if arg.arg != 'self':  # Exclude 'self' from required parameters for class methods
                 parameters["required"].append(argument_name)
+        
+        # Add follow_up_function parameter
+        parameters["properties"]["follow_up_function"] = {
+            "type": "object",
+            "description": "An optional follow-up function to call after this function."
+        }
+        
         return_type = self.convert_type_name(self.extract_return_type(tree))
         function_info = {
             "name": function_name,

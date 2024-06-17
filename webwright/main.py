@@ -57,13 +57,8 @@ history = FileHistory(history_file)
 session = PromptSession(history=history)
 
 async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history):
-    spinner = Halo(text='Calling GPTChat for command...please wait.', spinner='dots')
-    spinner.start()
-    
     try:
         success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, history=conversation_history)
-        
-        spinner.stop()
         
         if success:
             function_info = results.get("arguments", {}).get("function_info", {})
@@ -78,7 +73,6 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
                 print("system> An unknown error occurred.")
             return False, {"error": error_message}
     except Exception as e:
-        spinner.stop()
         error_message = f"system> Error: {str(e)}"
         print(error_message)
         logging.error(error_message)

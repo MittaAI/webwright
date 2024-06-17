@@ -9,11 +9,30 @@ from coolname import generate_slug
 webwright_dir = os.path.expanduser('~/.webwright')
 os.makedirs(webwright_dir, exist_ok=True)
 
-# Configure logging
 import logging
-log_dir = os.path.join(webwright_dir, 'logs')
-os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+def setup_logging(log_level=logging.INFO):
+    log_dir = os.path.join(webwright_dir, 'logs')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(os.path.join(log_dir, 'webwright.log')),
+        ]
+    )
+    
+    # Get the logger for the current module
+    logger = logging.getLogger(__name__)
+    
+    return logger
+
+def get_logger():
+    return logging.getLogger(__name__)
+
+# Initialize logging
+logger = setup_logging()
 
 # Constants for configuration directory and file
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".webwright")
