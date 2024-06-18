@@ -1,0 +1,330 @@
+﻿THE PEN, THE PURSE, & THE PULPIT
+
+
+A Modern Approach to Government Collaboration in the Era of AI
+
+
+
+
+By
+
+
+Sunil Daluvoy
+
+
+Richard Whitt
+________________
+TABLE OF CONTENTS
+
+
+
+
+Title                                                                        Page
+Executive Summary  ………………………………………….        2
+Audience & Objective  ……………………………………….        3                
+Introduction  ……………………………………………………..        4
+AI’s Mosaic Moment        ………………………………………..        5
+Strategy Defined  ………………………………………………        5
+Tactics  ……………………………………………………………….        6
+Case Studies  ……………………………………………………..        8
+* Spectrum Poker                                                
+* Android FCC License                                        
+* Telephone Number Portability                                
+Application to AI Companies Today  ……………….        12
+* Pre-requisites                                                
+Every Revolution is Unique  …………………………….        12
+Conclusion  ……………………………………………………….        14
+
+
+
+
+
+
+
+
+
+
+________________
+
+
+THE PEN, THE PURSE, & THE PULPIT
+A Modern Approach to Government Collaboration in the Era of AI
+“Study the past, if you would divine the future”  –  Confucius (551-479 BCE) 
+
+
+
+
+Executive Summary:
+
+
+
+
+"The Pen, The Purse, & The Pulpit: A Modern Approach to Government Collaboration in the Era of AI" explores the strategic framework that AI companies can adopt to navigate government scrutiny and leverage such scrutiny for competitive advantage. Drawing parallels with historical technological transitions, the paper emphasizes that, like broadband and smartphones, AI will significantly impact a wide number of market sectors, such as education, healthcare, finance, and employment. This inevitable government oversight presents a window of opportunity for AI companies to engage constructively with policymakers, including elected officials and regulatory bodies. By adopting a multidisciplinary approach that integrates product development with public policy strategy, AI firms can transform potential regulatory challenges into strategic advantages. This approach includes understanding and utilizing the three often misunderstood sources of power that policymakers possess:  legislative influence ("the pen"), financial leverage ("the purse"), and ideological influence ("the pulpit").
+The paper presents several case studies, such as Google's strategic maneuvering in the 3G spectrum auction and the expedited experimental license for Android, to illustrate successful applications of this three-pronged framework. It highlights the importance of a collaborative team comprising engineers, product managers, policy counsel, and business development executives in achieving longstanding regulatory success. AI companies can craft innovative solutions that align with public policy goals by fostering direct communication between product developers and regulators and ensuring a deep understanding of each other's objectives and constraints. 
+There are moments when everything changes. The introduction of ChatGPT on November 2022 is such a moment.  AI as a technology substrate existed well before then, of course, but it was obscured in middleware and understood well only by expert scientists. ChatGPT shined a bright light on the true possibilities of AI and in the process, captured the public imagination. Not surprisingly, it also captured the government’s attention. Herein lies the unique opportunity for AI-based companies to run this three-pronged “PPP” strategy to assault regulatory capture by the incumbents and advance their own business interests. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Audience: 
+
+
+The primary audience for this framework is the proposed ultimate beneficiaries: AI-native companies. However, these lessons are useful as well to any company or firm involved with the larger AI ecosystem.
+
+
+
+
+Objective:
+
+
+Present a unique approach to government collaboration to advance specific business objectives while advancing the social and public good. This framework is not intended to replace, but instead to complement, existing external affairs and public policy directives. 
+
+
+
+
+Authors:
+
+
+Sunil Daluvoy is currently co-founder of Sift AI and Managing Partner of El Cosmico Group. He has extensive experience in business development, having worked at major companies like Yahoo, Google, and Uber, as well as at early-stage startups. His career has consistently focused on launching new products and services by collaborating closely with product & engineering teams. Before entering the technology industry, he served as a Broadband Policy Lawyer at the FCC and as a Federal Prosecutor at the US Attorney’s Office. He is a graduate of Northwestern University (BS) and the University of San Diego Law School (JD).
+
+
+Richard Whitt is a longtime public policy attorney and tech strategist, leading government relations teams at Google, Twilio, and MCI Communications. He has headed up successful major policy campaigns related to Net neutrality, broadband access, spectrum auctions, and AI and privacy regulation.  Currently, he is working with Silicon Valley tech startups to develop and implement ethical corporate policy practices.  He is a cum laude graduate of Georgetown University Law Center.
+
+
+________________
+
+
+
+
+THE PEN, THE PURSE, & THE PULPIT
+A Modern Approach to Government Collaboration in the Era of AI
+        “Study the past, if you would divine the future”  –  Confucius (551-479 BCE). 
+
+
+
+
+Introduction
+
+
+Recent advancements in AI are nothing short of extraordinary. They represent a technological transition, a massive shift in how people will access information, create content, and enjoy entertainment. Like the advent of broadband deployment and smartphones earlier this century, AI unleashes products with massive social implications for areas such as education, health care, finance, and jobs.  Accordingly, government scrutiny will follow, regardless of invitation or jurisdiction.  This particular moment in public policy, however, is also an opportunity for those with a clear-eyed vision. Today’s AI companies can adopt past regulatory playbooks that jujutsu government scrutiny for their own competitive benefit. As in martial arts, you don’t confront force with your force, but instead “manipulate” it for your advantage.
+ 
+Each technology transition is unique, but all still operate within the confines of the public institutions, laws, regulations, and politics that have existed prior and will exist after. As we have witnessed, however, even with the technological advances over the past several years of the blockchain/cryptocurrency/NFTs/DAOs space, failing to engage the legal and policy landscape adequately can cripple a nascent technology from broader adoption.  It does not help when the primary rhetoric is antagonistic to the government in and of itself.  On the other hand, history is replete with companies that consider government interactions and processes strategic to their business.  
+
+
+This paper will briefly recount insightful elements from that recent history, explain the strategies that were employed, and cite examples of its success.  Of most immediate interest, this paper will utilize that salient history to propose a possible strategic playbook for AI companies. Simply hiring the best lawyers and lobbyists won’t yield these results. Why? They are experts in navigating a system they helped to author. That system inherently protects incumbents and the status quo under the noble guise of consumer protection, safety, and privacy. That system favors incumbents and only yields incremental results for new entrants.  The Venture Capitalist Bill Gurley has popularized the term “Regulatory Capture” to best describe this system.  However, there is a way for new entrants to assault the system and develop a whole new relationship with the government.  
+
+
+________________
+
+
+
+
+AI’s Mosaic Moment?
+
+
+The inventor of cable broadband, Milo Medin, called ChatGPT the Mosaic moment. Before Mosaic, only people with CS degrees accessed & played with the Internet. Mosaic offers an intuitive user interface, multimedia integration, and multi-protocol support. By simplifying the web browsing experience and making it more visually appealing, Mosaic made the Internet more accessible to everyday users, contributing to its popularization. 
+
+
+As recently as 2023, people had to know Pytorch or Tensorflow to use AI. ChatGPT changed that. ChatGPT has enabled virtually anyone to build with AI by abstracting the complexity of using LLMs. Both the developer and no-code communities are creating or reinventing every imaginable product. Another interesting similarity between then and now is input consumption. Mosaic consumed a lot of available bandwidth then, while GenAI requires substantial computational resources now. The input requirement for these respective services propelled the development of infrastructure. However, every historical analogy breaks down at some level. And every technological leap is unique in its own right. 
+
+
+
+
+Strategy Defined
+
+
+In discussions of government and business interactions, three distinct arenas of influence emerge: legislative and regulatory authority ("the power of the pen"), financial leverage ("the power of the purse"), and moral or ideological influence ("the pulpit"). Each offers distinct methods for businesses to sway government action in their favor.
+The "power of the pen" is characterized by involvement in the legislative and regulatory processes. This includes participation in rulemaking activities, the approval of mergers, and the conduct of civil investigations on the regulatory side. On the legislative front, it involves interactions with lawmakers, contributions to congressional hearings, and involvement in the drafting and amendment of bills.
+"The power of the purse" describes the influence wielded through financial mechanisms, including government contracts, monetary awards, tax incentives, and other economic measures designed to direct government spending or saving to benefit specific business interests.
+"The power of the pulpit" refers to government officials' ability to affect markets through rhetoric. Elected officials and regulators have the public stage, and the media will cover their comments. As such, they can heavily sway business decisions and product development. 
+
+
+________________
+
+
+
+
+TACTICS
+
+
+The following tactics apply primarily to the regulatory environment. As stated above, the pen refers to government rules and regulations, while the purse is the government's procurement and purchasing power.
+
+
+Depending on the theater and the issue, the company may employ one, all, or some combination of the following. 
+
+
+1. The Right Team Composition: The composition of the team leading this effort is essential. It should be led by product but include the following members: engineering, business development, in-house legal, outside regulatory counsel, and political advisors. Everyone has a different background, expertise, and lens to help shape the ultimate strategy and objectives. Ostensibly, this ad-hoc team will report to someone in the C-level. The benefits of this multidisciplinary team will become evident in the discussion below. You still need to hire experienced lawyers and lobbyists, but they are not taking the leading role. You should also consider hiring former agency heads on a specific consultative basis. 
+
+
+2. Start with the Product: Instead of asking how to make our product compliant, ask what the best products are based on first principles thinking and whether they conflict with regulations. What existing rules have to be changed, and why? As noted above, most of these rules are written by incumbents to protect their businesses. In many cases, new technologies can better advance the policy objectives of the old rules if only new ones are promulgated with their design in mind. 
+
+
+3. Eliminate or reduce the Middlemen: Reduce the intermediaries between those who write the code and those who write the rules. Under the standard approach, the legal team meets with product & business owners, collects all the relevant information, and then represents the company in front of regulators. However, this process is prone to errors, as there is much lost in translation when discussing complex technology.  You need to invite product and engineers to the meetings with the regulators. This enables a more accurate discussion of the technology's potential benefits/ harms. Regulatory counsel still play an important role and must be present at all times. 
+
+
+4. Reconciling different Faiths: The starting point is to put code writers and law drafters in the same room, but there is more. Although everyone speaks English, these groups don’t relate to each other because they pray to different gods. Technology worships on the altar of first principles, whereas government prays in the temple of precedent. This insight is essential to being an effective communicator in these contexts. It affects your narrative, language, and value proposition.  
+
+
+5. Multi-Disciplinary Learning: Most roles and responsibilities are completely siloed. Product managers are only incentivized to build great products, while policy lawyers study the rules and regulations. The current model assumes a level of coordination and collaboration that does not happen. Product and policy need to develop a better understanding of each other’s work. This multidisciplinary approach should be engrained in their jobs. Their bonuses depend on it. This slight organizational change should lead to better outcomes for the company overall. 
+________________
+CASE STUDIES 
+
+
+We will initially focus on “The Pen” for our case studies. The following represents using the regulatory process or engaging regulatory agencies to address a specific business problem. The authors started their careers in telecommunications, so these examples are about that industry. However, the strategy and tactics can be extrapolated to other industries and other contexts. 
+
+
+
+
+A.        Spectrum Poker    
+
+
+In 2007, the FCC was set to auction spectrum for 3G wireless networks. Spectrum is the lifeblood of mobile companies because it represents the frequencies at which they transmit voice and data. This generation of wireless would enable laptop applications like search, maps, and shopping to become mobile.  While the FCC was promulgating the rules for that auction, Google was negotiating with wireless carriers to ensure carriage of their mobile apps, specifically Google Maps and Search. Those talks were going nowhere, as the carriers had their vision for mobile apps that did not include Silicon Valley. Ultimately, Google petitioned the FCC to require the spectrum winners to abide by at least four separate “openness”  conditions: 
+
+
+   1. Open devices: any device could attach to services using the licensed spectrum bands
+   2. Open applications: any application could be utilized by end users on those same bands
+   3. Open services: offering connectivity to third-party resellers on a wholesale basis
+   4. Own networks: providing technically feasible interconnection
+
+
+The carriers were not pleased—in fact, they were furious. They claimed that the imposition of such conditions would devalue the spectrum and that the minimum bid requirement of $4.7B would not be met. The minimum bid represented the floor price the government expected to receive in exchange for the nationwide spectrum license. The carriers had enormous influence over the FCC and its spectrum auction process. The relationship between the FCC and the wireless companies can be best described as regulatory capture.
+
+
+The situation was dire. Google did not have the time or ability to address regulatory capture. However, mobile phones represent the future of how most people will access the Internet. Walking away would seriously affect Google’s ambitions to make the world’s information universally accessible.
+
+
+Undeterred, Google created an ad hoc team of engineers, product managers, policy counsel, and business development executives. Larry Page himself led the team effort. After much deliberation, the team devised a solution: sending a letter to the FCC pledging that Google would participate in the auction AND would guarantee the minimum bid of $4.7B if the FCC agreed to adopt the four proposed openness provisions.  
+
+
+It was a risky move for many reasons. Internally, the Android team argued that bidding on the spectrum would alienate the wireless companies from ever doing a deal with them. Externally, it was committing Google to develop a wireless company if they won the auction. No policy lawyer or government lobbyist would ever recommend it. Why? It was simply too disruptive. It would upend the status quo. Remember, the lawyers and lobbyists are co-conspirators in designing the system we sought to challenge. Spectrum is the lifeblood of wireless companies and the sole barrier to entry for competition. Allowing a technology company like Google to own the spectrum would be disastrous for the incumbents and the wireless industrial complex.
+
+
+Ultimately, because the FCC valued a competitive auction process and saw value in having a non-traditional provider participate in the auction, the agency agreed to impose two of the four conditions: open apps and open devices (as Google counsel Richard Whitt later admitted, those were the two openness provisions that Google wanted, and only sought the others as a negotiating ploy). Google accepted the two openness provisions as sufficient to warrant following through on its pledge to bid the minimum $4.7B requirement.  Verizon ultimately won the license by outbidding Google and agreeing to the requirements for open apps and devices.
+
+
+This tactic was only possible due to the composition and strategic thinking of Google’s ad hoc team. Viewing the problem through a multidisciplinary lens produced this unique strategy for an old problem—how to address regulatory capture. A new entrant playing spectrum poker with nearly $5B was (and remains) unprecedented. And it worked. While Google bid the minimum, the incumbents bid much higher, winning the spectrum licenses and subjecting themselves to the conditions Google could not obtain in the private negotiations.
+
+
+These rules benefitted not only Google but also the entire mobile app industry. When the iPhone was first announced, there was no third-party app store. Apple was historically known for its vertical integration and its closed architecture. On several occasions, Apple’s obituary was predicated on this model. Ultimately, the rules secured by Google for the 3G spectrum played an essential role in convincing Steve Jobs to launch the iOS app store as we know and love today. The chronology of events further supports this claim: iPhone launch, spectrum auction conclusion, App Store launch, and Apple’s press releases.
+
+
+
+
+B.        Android Experimental License 
+ 
+Google's Android phone development was almost as secretive as Apple’s iPhone. The Android team needed an experimental license from the FCC to test the phone design and features. However, the application process was very public and very time-consuming. As a regular course of business, the FCC took 12-14 months to approve such experimental licenses. This was a disaster. The Android team needed to show progress, and the Google executives were impatient. Google would have allocated its resources to another project it was contemplating. Remember, during this timeframe, Google was very acquisitive and launching new products at a feverish pace. 
+
+
+We needed to convince the FCC to grant us the application within weeks, not months. In its annual reports, the FCC clearly indicated that device innovation and competition were vital policy objectives. The team believed the Android would advance these goals, unlike other phone manufacturers at the time.  We had to convince the FCC that Android presented a unique opportunity. It was a step-order advance in mobile technology, while the others were simply incremental developments.  Losing Android would be a considerable loss for FCC goals and, more importantly, for all of us– mobile subscribers. 
+
+
+Instead of following the normal process, we decided to call a meeting with the FCC and bring the co-founder of Android along with essential product and engineering folks. We impressed them with the phone and even showed them actual designs. We also shared Google's decision-making process for product development and investment to argue that time was of the essence. It worked! We secured the license within four weeks.  
+
+
+To avoid publicity, the team came up with a creative solution. Reviewing previous experimental licenses, the engineers realized that individuals, not companies, often filed many applications under their names. We decided to apply for the license under the lead PM’s name, avoiding media scrutiny and preserving confidentiality.  Of course, the PM got job security for the duration of the license term since it technically belonged to him, not Google.  The success of gaining the license and keeping it private only happened by having the ad-hoc team lead the project and bringing the product builders and policy drafters into the same room. 
+
+
+
+
+C.         Telephone Number Portability 
+
+
+Before 1996, telephone numbers were assigned to particular geographic locations – a home, an office, a factory.  Each ten-digit number was hard-wired to that location.  As the mobile phone industry emerged in the early 1990s, that same principle applied to handsets.  This meant that every time a person changed to a different provider of fixed or mobile phone services, they were forced to give up “their” telephone number and acquire a new one.  Obviously, this arrangement suited the incumbent phone companies  – but it amounted to a huge barrier to competition, because it was a significant headache for any consumer or business owner eager to switch to competing providers. 
+
+
+Enter the Telecommunications Act of 1996. A landmark piece of legislation that opened up new local and long-distance telephone markets, the bipartisan Telecom Act also contained a provision mandating local number portability (LNP) for fixed wireline services. This provision was slipped into the bill on behalf of the long-distance telephone companies and consumer groups that sought to drive competition and consumer choice. Their advocacy followed the tried-and-true approach of connecting the issue to the public welfare of consumers (for Democrats) and heightened competition (for Republicans).  
+
+
+In  June 1996 – in the face of considerable opposition by the incumbent telephone companies – the Federal Communications Commission (FCC) issued an order mandating number portability for wireline services.  This was an unprecedented move by the agency, coming only six months after the bill was signed into law.  The FCC responded favorably to intense advocacy by the major long-distance carriers – ATT, MCI, and Sprint – as well as allied public interest organizations like Public Knowledge.  By 1997, a unified database had been established, to facilitate the porting of numbers between providers.  Simple number ports were supposed to take no more than a single business day.  New area codes were also introduced to deal with the burgeoning demand created by competition in both the wireline and wireless markets.
+
+
+In 2003, the FCC extended the Telecom Act’s LNP directive to include wireless services, and then in 2007, to Voice over IP (VoIP) services.  In both cases, the FCC acted on its own authority, but only after significant lobbying (again) by leading public interest and consumer groups.  In the case of wireless services, this meant that the introduction of the iPhone in 2007 was greatly facilitated by the ability of consumers to switch to AT&T – then the exclusive provider of the smartphone handset.  This freedom of number porting into the AT&T network is an often overlooked piece of the wild success enjoyed by the iPhone upon its launch. It also encouraged Verizon to partner with Android and enter the smartphone market. 
+
+
+Today, the North American Numbering Council (NANC) and the Local Number Portability Administrator (LNPA) manage some 800 million ported telephone numbers—a singular achievement that sprang from one provision in a sprawling bill and was brought to life through the efforts of determined advocates.
+
+
+An analog to telephone number portability for local carrier networks is data portability for Web platforms.  Data portability, mandated in 2018 by GDPR (the European data protection law), and CCPA (the California Consumer Privacy Act), requires that certain platform companies allow end users to move their personal data to other platforms.  As was the case earlier with number portability, however, exactly how and when these data portability mandates will be carried out over time will be largely determined by the regulators in charge.  This will likely be based on the sophistication of the advocacy provided by user groups.  In this instance, the Power of the Pen will reside with a relatively few regulatory experts and advocates operating behind the scenes.  Web companies, large and small, will be required to abide by whatever comes from these deliberations.
+
+
+
+
+________________
+
+
+APPLICATION TO AI COMPANIES TODAY
+
+
+It is not yet obvious whether AI companies today can adopt elements of these strategies and tactics and achieve similar results. Before we address that question directly, however, it’s worth summarizing the prerequisites for any company to succeed with this approach. 
+
+
+Prerequisites:
+
+
+   1. Product: Your product must have some demonstrated potential to advance social and public policy goals in the areas of education, health care, jobs, and housing. It helps there is an existing product that is used and loved by its users. 
+   2. Company: The government has not recently fined your company for violating any consent decrees and has no active investigations by the DOJ, FTC, Congressional Committees, and/or State Attorney General’s Offices. Company credibility cannot be impaired in any manner. 
+   3. Timing: Your product and technology need a nexus to a current or upcoming government inquiry, investigation, and/ or proceeding.  
+
+
+
+
+Every Revolution is Unique: 
+
+
+Dating back to the introduction of semiconductors, every digital revolution is unique in its own right.  One cannot simply cut and paste lessons learned from personal PC adoption to Social Media growth. The case studies above have some notable differences from today’s AI companies.  First, they occurred within the context of a heavily regulated industry– telecommunications. Second, that industry also had one clear regulatory agency– the FCC.  As such, there was simplicity in executing the offensive strategy, as the rules and the theater were clearly delineated.  To date, AI has been operating in a software industry that is subject to less direct regulation,  and does not fall under any one agency jurisdiction. However, as generative AI has captured headlines and raised concerns among policymakers, there are windows of opportunity for new laws and regulations to be devised, adopted, and enforced. 
+
+
+Below is a list of the key issues confronting both the industry and the government legislators & regulators.
+
+
+   * Intellectual Property (IP) Rights: One of the most prominent legal issues with generative AI involves intellectual property. Questions arise about who owns the copyright of content created by AI, whether AI-generated works are eligible for copyright protection, and how the use of copyrighted materials to train AI models affects IP rights.
+
+
+   * Privacy: Generative AI can potentially infringe on privacy, especially when trained on personal data without consent. The application of AI in areas like facial recognition and personal data analysis raises significant privacy concerns, implicating laws like the General Data Protection Regulation (GDPR) in Europe and other privacy regulations worldwide.
+
+
+   * Liability: Determining liability for harm or damages caused by decisions or actions taken by AI systems can be complex. This includes who is responsible if an AI system fails or causes harm—whether it be the developers, the users, or potentially the AI itself; in some jurisdictions, exploring legal personhood for AI.
+
+
+   * Transparency: Laws such as the GDPR have provisions for the right to explanation, meaning individuals have the right to understand how decisions about them were made. This can be challenging with AI systems, particularly with those that are not designed to be transparent (like some deep learning systems).
+
+
+   * Bias & Discrimination: AI systems can perpetuate or even exacerbate biases present in their training data. This implicates anti-discrimination laws, particularly in applications like hiring, lending, and law enforcement, where biased AI decision-making could lead to unfair treatment.
+
+
+   * Compliance: Various sectors, such as healthcare, finance, and transportation, have specific regulations that AI tools must comply with. For example, in healthcare, AI must comply with regulations concerning medical devices and patient privacy.
+
+
+   * Employment: The integration of AI in workplaces can lead to legal issues related to worker displacement, changes in job descriptions, and new requirements for employee skills and training.
+
+
+   * Security: AI systems are susceptible to unique threats like data poisoning and model theft, raising questions about the appropriate security measures and the legal implications of breaches.
+
+
+These issues will be debated in the State Legislatures, Congress, and courthouses.  By recent count, over 400 AI-related bills are being considered across 40 States in this country alone. As always, California is in the lead with a number of pending bills.  In Congress, leaders in both houses and from both parties have pledged to take action regarding the advent of AI in citizens’ lives.  AI companies have a unique ability to influence these discussions in their favor by adopting the strategy and tactics recommended in this paper. For each company, it is through this process they will likely arrive at the optimal solution for their own business model and strategic objectives. Also, it is through this process that each company companies can advance its social and public policy objectives. 
+
+
+It is worth repeating that although each technology transition is unique, they still operate within the confines of the public institutions, laws, and politics that are not nearly as dynamic as the industries they oversee.   
+
+
+We started with a quote from a Chinese philosopher, and we are going to end with a quote from a 19th Century French Novelist: 
+
+
+“The more things change, the more they stay the same” - Jean-Baptiste Alphonse Karr
+
+
+Conclusion:
+
+
+AI-native companies face unprecedented opportunities and challenges in today's regulatory environment. By leveraging historical strategies, AI firms can navigate government scrutiny and transform it into a strategic advantage. The key is to understand and engage with "the power of the pen, the purse, and the pulpit," which includes integrating product development with regulatory strategy. Historical examples demonstrate the importance of a multidisciplinary approach, where product teams work closely with legal and regulatory experts to create innovative solutions that align with public policy objectives.
+To succeed, AI companies must demonstrate their products' societal benefits while ensuring compliance with evolving regulations. This involves proactive engagement with regulatory bodies, transparency in operations, and a commitment to ethical considerations. By adopting these strategies, AI firms can influence the regulatory landscape, ensuring that their innovations advance both their own financial interests and societal welfare. This approach not only helps in navigating the regulatory complexities but also positions AI companies as leaders in driving positive societal change.

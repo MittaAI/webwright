@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Campbell - New Braunfels, Texas</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        .hero {
+            height: 100vh;
+            background: url('hero-image.jpg') center center no-repeat;
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+            text-align: center;
+        }
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        footer {
+            background-color: #f8f9fa;
+            padding: 20px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <header class="sticky-header">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="#">Dr. Campbell</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#services">Services</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Welcome to Dr. Campbell's Dental Clinic</h1>
+            <p>Providing excellent dental care in New Braunfels, Texas</p>
+            <h2>Call us at (830) 555-1234</h2>
+        </div>
+    </section>
+
+    <section id="about" class="py-5">
+        <div class="container">
+            <h2>About Dr. Campbell</h2>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent tristique ligula non ante dictum, in cursus urna commodo. Aenean ullamcorper dictum metus, eu tincidunt magna tempor ut.</p>
+            <p>Dr. Campbell graduated from XYZ University and has over 20 years of experience in the field of dentistry.</p>
+        </div>
+    </section>
+
+    <section id="services" class="py-5 bg-light">
+        <div class="container">
+            <h2>Our Services</h2>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent tristique ligula non ante dictum, in cursus urna commodo. Aenean ullamcorper dictum metus, eu tincidunt magna tempor ut.</p>
+            <p>We offer a variety of services including teeth cleaning, whitening, and orthodontics.</p>
+        </div>
+    </section>
+
+    <section id="contact" class="py-5">
+        <div class="container">
+            <h2>Contact Us</h2>
+            <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent tristique ligula non ante dictum, in cursus urna commodo. Aenean ullamcorper dictum metus, eu tincidunt magna tempor ut.</p>
+            <p>Address: 123 Main Street, New Braunfels, TX<br>Phone: (830) 555-1234</p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2023 Dr. Campbell's Dental Clinic. All rights reserved.</p>
+            <p>We offer balloons for kids!</p>
+        </div>
+    </footer>
+</body>
+</html>

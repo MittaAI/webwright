@@ -7,11 +7,15 @@ import time
 import random
 import traceback
 import asyncio
-import openai
 from prompt_toolkit import PromptSession
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.formatted_text import FormattedText, PygmentsTokens
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
+from prompt_toolkit.filters import Condition
+from prompt_toolkit.clipboard import ClipboardData
+
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import TerminalFormatter
@@ -51,10 +55,21 @@ logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=loggi
 # User
 username = get_username()
 
+# Key bindings
+bindings = KeyBindings()
+
+# Intercept Ctrl+V
+@bindings.add('c-v')
+def _(event):
+    print("system> Use mouse right-click to paste.")
+    clipboard_data = event.app.clipboard.get_data()
+    if isinstance(clipboard_data, ClipboardData):
+        event.current_buffer.insert_text(clipboard_data.text)
+
 # Build history and session
 history_file = os.path.join(webwright_dir, '.webwright_history')
 history = FileHistory(history_file)
-session = PromptSession(history=history)
+session = PromptSession(history=history, key_bindings=bindings)
 
 async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history):
     try:
@@ -149,20 +164,16 @@ async def main():
                     conversation_history.append({"role": "assistant", "content": results["explanation"]})  # Append AI's response to conversation history
                 else:
                     print("system> An unknown error occurred.")
-        except KeyboardInterrupt:
-            print("system>", random.choice(["Bye!", "Later!", "Nice working with you."]))
-            break
+
         except RuntimeError as e:
             if str(e) == 'Event loop is closed':
-                pass  # Ignore the exception if the event loop is closed
+                print("system> Event loop is already closed. Exiting gracefully (RuntimeError)...")
             else:
                 raise  # Re-raise the exception for other RuntimeError instances
         except Exception as e:
-            error_message = f"system> Error: {str(e)}"
-            print(error_message)
-            logging.error(error_message)
+            print(f"system> Error during shutdown: {str(e)}")
+            logging.error(f"Error during shutdown: {str(e)}")
             logging.error(traceback.format_exc())
-
 
 def entry_point():
     try:
@@ -175,7 +186,7 @@ def entry_point():
             task.cancel()
         # Ensure the event loop is closed
         loop = asyncio.get_event_loop()
-        if not loop.is_closed():
+        if not loop is None and not loop.is_closed():
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.close()
     except Exception as e:
