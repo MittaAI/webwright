@@ -25,7 +25,7 @@ from lib.util import get_username
 from halo import Halo
 
 try:
-    from lib.aifunc import ai, process_results
+    from lib.aifunc import ai
     from git import Repo
 except ImportError as e:
     if 'git' in str(e):
@@ -71,14 +71,18 @@ history_file = os.path.join(webwright_dir, '.webwright_history')
 history = FileHistory(history_file)
 session = PromptSession(history=history, key_bindings=bindings)
 
-async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history):
+async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, function_call_model):
     try:
-        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, history=conversation_history)
+        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, function_call_model=function_call_model, history=conversation_history)
         
+        logging.debug(f"AI response: {results}")
+           
         if success:
-            function_info = results.get("arguments", {}).get("function_info", {})
-            explanation = await process_results(results, function_info, openai_token)
-            return True, {"explanation": explanation}
+            if "response" in results:
+                return True, {"explanation": results["response"]}
+            else:
+                print("system> An unexpected response format was received.")
+                return False, {"error": "Unexpected response format"}
         else:
             if "error" in results:
                 error_message = results["error"]
@@ -86,14 +90,13 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
                 logging.error(f"Error: {error_message}")
             else:
                 print("system> An unknown error occurred.")
-            return False, {"error": error_message}
+            return False, {"error": error_message if "error" in results else "Unknown error"}
     except Exception as e:
         error_message = f"system> Error: {str(e)}"
         print(error_message)
         logging.error(error_message)
         logging.error(traceback.format_exc())
         return False, {"error": error_message}
-
 
 def format_response(response):
     formatted_text = FormattedText()
@@ -121,6 +124,7 @@ def format_response(response):
 
     return formatted_text
 
+
 async def main():
     openai_token = get_openai_api_key()
     if not openai_token:
@@ -132,6 +136,10 @@ async def main():
         anthropic_token = input("Please enter your Anthropic API key: ")
         set_anthropic_api_key(anthropic_token)
 
+    function_call_model = input("Choose function call model (openai/anthropic): ").lower()
+    while function_call_model not in ["openai", "anthropic"]:
+        function_call_model = input("Invalid choice. Please enter 'openai' or 'anthropic': ").lower()
+
     setup_ssh_key()
     
     # Clear the screen
@@ -140,8 +148,9 @@ async def main():
     conversation_history = []  # Initialize conversation history
     
     while True:
+        logging.info(f"Conversation history: {conversation_history}")
         try:
-            question = await session.prompt_async(f"{username}[shell]> ")
+            question = await session.prompt_async(f"{username}[{function_call_model}]> ")
             # Check if the question is empty (user just hit enter)
             if question.strip() == "":
                 print()  # Print a newline character for line feed
@@ -152,18 +161,14 @@ async def main():
                 sys.exit()
             
             conversation_history.append({"role": "user", "content": question})  # Append user's question to conversation history
-            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history)
+            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, function_call_model)
             
             if success and "explanation" in results:
-                print(f"system> {results['explanation']}")
+                formatted_response = format_response(results['explanation'])
+                print_formatted_text(formatted_response)
                 conversation_history.append({"role": "assistant", "content": results["explanation"]})  # Append AI's response to conversation history
             else:
-                if success and "explanation" in results:
-                    formatted_response = format_response(results['explanation'])
-                    print(to_formatted_text(formatted_response))
-                    conversation_history.append({"role": "assistant", "content": results["explanation"]})  # Append AI's response to conversation history
-                else:
-                    print("system> An unknown error occurred.")
+                print("system> An unknown error occurred.")
 
         except RuntimeError as e:
             if str(e) == 'Event loop is closed':
@@ -174,6 +179,7 @@ async def main():
             print(f"system> Error during shutdown: {str(e)}")
             logging.error(f"Error during shutdown: {str(e)}")
             logging.error(traceback.format_exc())
+
 
 def entry_point():
     try:

@@ -1,58 +1,39 @@
-# lib/functions/claude_write_code.py
-import logging
-from anthropic import Client
+# lib/functions/write_code_to_file.py
+import os
 from lib.function_wrapper import function_info_decorator
-from lib.util import get_anthropic_api_key
 
 @function_info_decorator
-def claude_write_code(prompt: str, model: str = "claude-3-opus-20240229") -> dict:
+def write_code_to_file(file_path: str, code: str) -> dict:
     """
-    Generates code using Claude's API based on the provided prompt.
-    
-    :param prompt: The detailed prompt outlining the steps or requirements for the code.
-    :type prompt: str
-    :param model: The name of the Claude model to use for code generation. Defaults to "claude-3-opus-20240229".
-    :type model: str
-    :param anthropic_token: The Anthropic API token to use for authentication. If not provided, it will be retrieved from the environment variable 'ANTHROPIC_API_KEY'.
-    :type anthropic_token: str
-    :return: A dictionary containing the success status and the generated code.
+    Writes code to a specified file.
+    If the file_path is just a file name, it defaults to the current directory.
+    :param file_path: The path of the file to write the code to.
+    :type file_path: str
+    :param code: The code to write to the file.
+    :type code: str
+    :return: A dictionary indicating the success or failure of the operation.
     :rtype: dict
     """
     try:
-        anthropic_token = get_anthropic_api_key()
-        if not anthropic_token:
-            raise ValueError("Anthropic API token not provided and 'ANTHROPIC_API_KEY' environment variable not set.")
+        # If file_path is just a file name, join it with the current directory
+        if not os.path.dirname(file_path):
+            file_path = os.path.join(os.getcwd(), file_path)
 
-        client = Client(api_key=anthropic_token)
+        # Ensure the directory exists
+        directory = os.path.dirname(file_path)
+        os.makedirs(directory, exist_ok=True)
 
-        system_prompt = "You are a helpful assistant that generates code based on the provided prompt."
-        messages = [{"role": "user", "content": prompt}]
+        # Write the code to the file
+        with open(file_path, "w") as file:
+            file.write(code)
 
-        response = client.messages.create(
-            model=model,
-            max_tokens=2048,
-            messages=messages,
-            system=system_prompt
-        )
-
-        content_blocks = response.content
-        if content_blocks:
-            generated_code = ''.join(block.text for block in content_blocks)
-            return {
-                "success": True,
-                "code": generated_code,
-            }
-        else:
-            return {
-                "success": False,
-                "error": "Failed to generate code",
-                "reason": "Claude's API returned empty content blocks.",
-            }
-
+        return {
+            "success": True,
+            "message": f"Code successfully written to '{file_path}'."
+        }
     except Exception as e:
-        logging.error(f"Error generating code with Claude's API: {str(e)}")
         return {
             "success": False,
-            "error": "Failed to generate code",
-            "reason": str(e),
+            "error": "Failed to write code to file",
+            "reason": str(e)
         }
