@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Tooth - Anytown, USA</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Add styles for the chat icon */
+        .chat-icon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background-color: orange;
+            border: none;
+            border-radius: 50%;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        .chat-icon img {
+            width: 30px;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Dr. Tooth</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item active">
+                    <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">About</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Services</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Contact</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="jumbotron text-center" style="background-color: orange;">
+        <h1 class="display-4">Welcome to Dr. Tooth's Office</h1>
+        <p class="lead">We make dental visits fun with balloons for kids!</p>
+        <a href="#" class="btn btn-primary btn-lg">Learn More</a>
+    </header>
+
+    <div class="container text-center">
+        <h2>Located in Anytown, USA</h2>
+        <p>Come and visit us or call us at (555) 555-5555</p>
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-light sticky-footer">
+        <div class="container text-center">
+            <span class="text-muted">&copy; 2023 Dr. Tooth's Dental Office</span>
+        </div>
+    </footer>
+
+    <!-- Chat Icon -->
+    <button class="chat-icon">
+        <img src="https://img.icons8.com/pastel-glyph/64/ffffff/chat.png" alt="Chat Icon"/>
+    </button>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

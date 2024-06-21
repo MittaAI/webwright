@@ -160,24 +160,22 @@ async def main():
                 print("system> Bye!")
                 sys.exit()
             
-            conversation_history.append({"role": "user", "content": question})  # Append user's question to conversation history
+            conversation_history.append({"role": "user", "content": question})
+            logging.info(f"Main: Added user message to history. Current history: {conversation_history}")
+            
             success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, function_call_model)
             
             if success and "explanation" in results:
                 formatted_response = format_response(results['explanation'])
                 print_formatted_text(formatted_response)
-                conversation_history.append({"role": "assistant", "content": results["explanation"]})  # Append AI's response to conversation history
+                conversation_history.append({"role": "assistant", "content": results["explanation"]})
+                logging.info(f"Main: Added assistant response to history. Current history: {conversation_history}")
             else:
-                print("system> An unknown error occurred.")
+                print("system> An error occurred: " + results.get("error", "Unknown error"))
 
-        except RuntimeError as e:
-            if str(e) == 'Event loop is closed':
-                print("system> Event loop is already closed. Exiting gracefully (RuntimeError)...")
-            else:
-                raise  # Re-raise the exception for other RuntimeError instances
         except Exception as e:
-            print(f"system> Error during shutdown: {str(e)}")
-            logging.error(f"Error during shutdown: {str(e)}")
+            print(f"system> Error: {str(e)}")
+            logging.error(f"Error: {str(e)}")
             logging.error(traceback.format_exc())
 
 

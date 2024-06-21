@@ -1,8 +1,6 @@
 import random
 
-def random_word(sentence):
-    words = sentence.split()
-    return random.choice(words)
-
-sentence = "this is a test of the random word function"
-print(random_word(sentence))
+sentence = "the quick brown fox jumped over the lazy dog"
+words = sentence.split()
+random_word = random.choice(words)
+print(random_word)
