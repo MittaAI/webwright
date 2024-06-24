@@ -102,9 +102,21 @@ def format_response(response):
     formatted_text = FormattedText()
     lines = response.split('\n')
     in_code_block = False
+    in_thinking_block = False
     code_lines = []
 
     for line in lines:
+        if in_thinking_block:
+            if '</thinking>' in line:
+                in_thinking_block = False
+                formatted_text.append(('', '\n'))  # Add a newline after thinking block
+            continue
+        
+        if '<thinking>' in line:
+            in_thinking_block = True
+            formatted_text.append(('italic', 'thinking\n'))
+            continue
+
         if line.startswith('```python'):
             in_code_block = True
             continue
