@@ -5,7 +5,8 @@ from lib.util import list_files
 @function_info_decorator
 def get_project_files(project_directory: str) -> dict:
     """
-    Lists all the files in the project directory and returns them as a directory listing.
+    Lists all the files in the project directory and returns them as a directory listing,
+    ignoring .git and other dot directories.
     :param project_directory: The path to the project directory.
     :type project_directory: str
     :return: A dictionary containing the status of the operation and the directory listing.
@@ -20,12 +21,19 @@ def get_project_files(project_directory: str) -> dict:
                 "reason": f"The directory '{project_directory}' does not exist."
             }
         
-        # List all the files in the project directory
-        file_list = list_files(project_directory)
+        # List all the files in the project directory, ignoring dot directories
+        file_list = []
+        for root, dirs, files in os.walk(project_directory):
+            # Remove dot directories
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            
+            for file in files:
+                file_path = os.path.relpath(os.path.join(root, file), project_directory)
+                file_list.append(file_path)
         
         # Generate the directory listing
         directory_listing = "Directory listing:\n"
-        for file_path in file_list:
+        for file_path in sorted(file_list):
             directory_listing += f"{file_path}\n"
         
         return {

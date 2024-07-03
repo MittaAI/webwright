@@ -116,7 +116,7 @@ def load_functions_from_directory(directory):
                 for attr in dir(module):
                     func = getattr(module, attr)
                     if callable(func) and hasattr(func, 'function_info'):
-                        logging.info(f"Loaded function: {func.__name__}")
+                        logging.info(f"Loaded function: {attr}")
             except Exception as e:
                 logging.error(f"Failed to load module {module_name}: {e}")
 

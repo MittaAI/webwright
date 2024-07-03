@@ -122,7 +122,12 @@ def format_response(response):
             continue
         elif line.startswith('```') and in_code_block:
             in_code_block = False
-            formatted_text.append(PygmentsTokens(PythonLexer().get_tokens(''.join(code_lines))))
+            try:
+                tokens = PygmentsTokens(PythonLexer().get_tokens(''.join(code_lines)))
+                formatted_text.extend([(token[0], token[1]) for token in tokens])
+            except Exception as e:
+                # If tokenization fails, fall back to plain text
+                formatted_text.extend([('', line + '\n') for line in code_lines])
             formatted_text.append(('', '\n'))
             code_lines = []
         elif in_code_block:
