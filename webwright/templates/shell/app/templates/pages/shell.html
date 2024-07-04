@@ -1,0 +1,604 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{sidekick_nick}}@mitta.us</title>
+  <meta name="description" content="Command line AI.">
+  <meta name="author" content="Kord Campbell">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?version=69">
+  <link rel="stylesheet" href="{{ url_for('static', filename='jquery-ui.css') }}">
+   
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+  <script type="text/javascript" src="{{ url_for('static', filename='jquery.min.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='jquery.console.js') }}?version=11"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='dropupload.js') }}?version=67"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='jquery-ui.js') }}"></script>
+  <script type="text/javascript" src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+  <script src="//mozilla.github.io/pdf.js/build/pdf.js"></script>
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+
+<body style="z-index: -100;">
+  <div id="terminal" class="console"></div>
+  <div id="scrolly"></div>
+</body>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    // someone want a cookie?
+    const getCookieValue = (name) => (
+      document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)')?.pop() || ''
+    )
+    
+    const setCookieValue = (name, value) => (
+      document.cookie = name+"="+value+"; path=/;"
+    )
+
+    // load history
+    // $.get('/k', {start: 0, rows: 100000}).done(function(result){
+    //  $.each(result.docs, function(index, doc) {
+    //    controller.addToHistory(doc.line);
+    //  });
+    //  report(System("History has been loaded."));
+    //});
+
+    // on tab enter
+    $(window).on('focus', function() {
+      $('#terminal').trigger('click');
+    });
+
+    // tooltip hovers for title
+    // ".none" blocks it picking up any style
+    $(".none").tooltip({
+      items: "[title]",
+      content: function() {
+        return $(this).attr("title");
+      }
+    });
+
+    /*
+    var socket = io.connect('/socket');
+    console.log("here");
+    socket.on('connect', function () {
+        console.log('Connected to Socket.IO');
+    });
+
+    socket.on('message', function (data) {
+        console.log('Received message: ' + data);
+    });
+
+    // You can send messages to the server using socket.emit
+    function sendMessage(message) {
+        socket.emit('message', message);
+    }
+    */
+
+    // mood functions
+    var moods_and_weights = {{moods_and_weights|safe}};
+
+    // FUNCTIONS
+    // 
+    // convert mood to ascii or emoji
+    function moodToAsciiEmoji(state) {
+      return moods_and_weights[state];
+    }
+
+    // probability tables
+    // modeling Plutchik’s Wheel of Emotions, eventually
+    function moodMixer(activity, mood) {
+      var _dice = Math.random();
+      return _dice
+    }
+
+    // set mood of sidekick
+    function setMood(state) {
+      // get the current sidekick
+      $.getJSON("/p/sidekick", function( result ) {
+        // update the sidekick's mood
+        $.ajax({
+          url: "/i/"+result.setting.value+"/state",
+          type: 'POST',
+          data: {'mood': state},
+          error: function(xhr, status, error){
+            // report error
+            report(_Sidekick(status + " [" + error + "] reported"));
+            BotAias("", "!reset", "/j", skip_history=1);
+          }    
+        }).done(function(data) {
+          if(data.resolve == "updated") {
+            // update the sidekick
+            UpdateSidekick(data.sidekick.nick, data.sidekick.mood);
+            if (Math.random() < 0.70) {
+              report(Sidekick(moodToAsciiEmoji(state)['emoji']));
+            } else {
+              var responses = ["Mood set to", "Apparently, I'm feeling really", "I am beginning to feel", "I feel", "Apparently, I'm", "Switching mood to"];
+              report(Sidekick(responses[Math.floor(Math.random() * responses.length)]+' '+data.sidekick.mood+'.'));
+            }
+          }
+        });
+      });
+      return true
+    }
+
+    // ID maker 
+    function MakeID(length) {
+      var result = '';
+      var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      for ( var i = 0; i < length; i++ ) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      return result;
+    }
+
+    // click handler
+    function rollupClicks(rollup_clicks) {
+      $.each(rollup_clicks, function(index, clicks) {
+        $(clicks.id).click(function() {
+          eval(clicks.js); // eval != evil
+          Scroll();
+        });
+      });
+      return;
+    }
+    
+    // display update
+    function UpdateSidekick(nick, _mood) {
+    // update public
+      mood = _mood;
+      $(document).prop('title', nick+"@mitta.us");
+      sidekick_nick = nick;
+    }
+
+    // rate limited on server
+    function Sms(text) {
+      $.ajax({
+        url: "/sms", 
+        data: { message: text },
+        contentType: "application/json", // to the server
+        dataType: 'json', // coming back from server
+        error: function(xhr, status, error){
+          controller.report(_Sidekick(status + " [" + error + "] reported"));
+          Aias("null", "!reset");
+        }
+      }).done(function(data) {
+        if(data.result == "failed") {
+          report(System("No phone number, or another error occured."));
+        } else {
+          report(_Sidekick("Sending..."));
+          setMood("joyful");
+        }
+      });
+    }
+
+    // logout
+    function logout() {
+      $.get("/h", function(data){
+        if (data['uid'] == "anonymous") {
+          // we're logged out
+          window.location.href = "/login";
+        } else {
+          report("Error encountered in evaluated script.");
+        }
+      })
+    }
+
+    // log line
+    function Log(source_type, author, recipient, line) {
+      log_line = {
+          "source_type": source_type,
+          "author": author,
+          "recipient": recipient,
+          "line": line
+      }
+      // move this to python handler
+    }
+
+    // Aias, the son of King Telamon and Periboea and grandson of Zeus
+    // load a dynamic javascript by command name
+    function Aias(target_id, line, path="/j", bot=0, skip_history=0) {
+      // guard against empty strings
+      line = line.trim();
+
+      if (line.trim() == ""){
+        return false;
+      }
+      var evil = "";
+
+      if (!target_id) {
+        target_id = "target_" + MakeID(5);
+      }
+
+      // just trying out my hand at promises to solve the click problem
+      // report a target div to stick things into from the app run
+      report($('<div id="'+target_id+'" class="target"></div>')).then(() => {
+        // call the javascript app handler
+        $.ajax({
+          url: path,
+          type: 'POST',
+          data: JSON.stringify({
+            line: encodeURI(line),
+            target_id: target_id
+          }),
+          contentType: 'application/json',
+          dataType: 'text',
+          error: function(xhr, status, error){
+            console.log("error");
+            if (!bot) {
+              // on error, save the user's input for running when we recover
+              document.cookie = "line="+line+"; path=/;";
+              logout();
+            }
+          }
+        }).done(function(data){
+          // eval the result
+          try {
+            evil = eval(data);
+            if (!skip_history && line.startsWith("!") && bot==1) {
+              controller.addToHistory(line);
+              Log("history", username, sidekick_nick, line);
+            }
+          } catch (e) {
+            // check if we're not authenticated
+            if (e.message == "Unexpected token '<'") {
+              // stash the line and proceed to logout
+              document.cookie = "line="+line+"; path=/;";
+              logout();
+            } else {
+              Sidekick(e.lineNumber);
+              Sidekick(e.message+".");
+              console.log(e);
+            }
+          }     
+        }).always(function(){
+          if (line.includes("|close")) {
+            // are we getting blocked from closing by chrome
+            window.close();
+          }
+        });
+        return evil;
+      });
+    }
+
+    function BotAias(target_id, line, path="/j", skip_history=0) {
+      Aias(target_id, line, path="/j", bot=1, skip_history=0);
+      report(Sidekick(line));
+    }
+
+    function Events(pipe="none", entity="all") {
+      var event_url = "/events/"+pipe+"/"+entity;
+      var timer_count = 60000;
+      var timer = setInterval(function() {
+        $.get(event_url, function(data) {
+          if (data.text == "last_bag" || timer_count < 0) {
+            clearInterval(timer);
+          } else {
+            if (data.text != "none" && data.text) {
+              if (data.text.startsWith("!")) {
+                BotAias('', data.text);
+              } else {
+                report(_Sidekick(data.text));
+              }
+            }
+          }
+          timer_count = timer_count - 3000;
+        });
+      }, 3000);
+    }
+
+    // PRINTING
+    // 
+    // json syntax highlight
+    function syntaxHighlight(json) {
+      json.replace(/\n/g, '<br/>').replace(/\s/g, '&nbsp;').replace(/\t/g, '&nbsp;&nbsp;');
+      if (typeof json != 'string') {
+           json = JSON.stringify(json, undefined, 2);
+      }
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>').replace(/\s/g, '&nbsp;').replace(/\t/g, '&nbsp;&nbsp;');;
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+          var cls = 'number';
+          if (/^"/.test(match)) {
+              if (/:$/.test(match)) {
+                  cls = 'key';
+              } else {
+                  cls = 'string';
+              }
+          } else if (/true|false/.test(match)) {
+              cls = 'boolean';
+          } else if (/null/.test(match)) {
+              cls = 'null';
+          }
+          return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
+
+    // capitalization
+    function capitalize(string) {
+      return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+
+    // scroll to bottom
+    function Scroll() {
+      var elmnt = document.getElementById("scrolly");
+      elmnt.scrollIntoView();
+    }
+
+    // this is an async function to report to console
+    async function report(html) {
+      return new Promise((resolve,reject) => {
+        // this is synchronous, just playing around for future use
+        controller.report(html);  
+        return resolve("reported");
+      })      
+    }
+
+    // report(User("text to display on screen from entity"))
+    function User(words) {
+      return $('<div><span class="jquery-console-prompt-label">{{username}}~&gt;</span> '+words+'</div>');
+    }
+
+    // sidekick output with link handling
+    function Sidekick(words, hide_prompt, format) {
+      words = String(words);
+
+      // function Log(source_type, author, recepient, line) {
+      // Log("history", sidekick_nick, username, words);
+
+      var rollup_HTML = "";
+      var _words = words.split('\n');
+
+      $.each(_words, function(index) {
+        if (format == "code")  {
+          rollup_HTML = rollup_HTML + '<pre class="code">'+_words[index]+'</pre>';
+        } else if (hide_prompt == true) {
+          rollup_HTML = rollup_HTML + '<div><span class="sidekick_prompt"></span>'+_words[index]+'</div>';
+        } else {
+          rollup_HTML = rollup_HTML + '<div><span class="sidekick_prompt">'+sidekick_nick+moodToAsciiEmoji(mood).ascii+'&gt; </span>'+_words[index]+'</div>';
+        }
+        if (_words.length > 3) {
+          hide_prompt = true;
+        }
+      });
+
+      report($(rollup_HTML)).then(() => {
+        // handle links/commands
+        var _rollup_clicks = [];
+        $.each($(rollup_HTML).find("a"), function(index, link) {
+          if ($(link).attr('command')) {
+            _rollup_clicks.push({id: "#"+$(link).attr("id"), js:"BotAias('', '"+$(link).attr('command')+"');"});
+          } else if ($(link).attr('completion')) {
+            _rollup_clicks.push({id: "#"+$(link).attr("id"), js:"controller.promptText('"+$(link).attr('completion')+"');"});
+          }
+        });
+        rollupClicks(_rollup_clicks);
+      });
+      return
+    }
+    var Sidekick_HTML = Sidekick;
+
+    // without logging
+    function _Sidekick(words) {
+      return $('<div><span class="sidekick_prompt">'+sidekick_nick+moodToAsciiEmoji(mood).ascii+'&gt;</span> '+words+'</div>');
+    }
+
+    // without logging
+    function _Sidekick_HTML(words) {
+      return '<div><span class="sidekick_prompt">'+sidekick_nick+moodToAsciiEmoji(mood).ascii+'&gt;</span> '+words+'</div>';
+    }
+
+    // remove X
+    function _X(id) {
+      return '<a style="color: red;" href id="'+id+'">x</a>';
+    }
+
+    // send HTML
+    function Send_HTML(html) {
+      return $('<div>'+html+'</div>');
+    }
+
+    // report(System("I'm always bored."))
+    function System(html) {
+      var rollup_HTML = '<div><span class="system_prompt">system=></span> '+html+'</div>';
+      report($(rollup_HTML)).then(() => {
+        // handle clicks and commands
+      });
+      return
+    }
+
+    // VARIABLES
+    //
+    // the line entered
+    var line = "{{line|safe}}";
+
+    // check if we have a url sent over
+    var url = "{% if url %}{{url}}{% endif %}";
+
+    // url history depth
+    var history_depth = {{ history_depth }};
+    
+    // entity nick (specified with @whatever )
+    var sidekick_nick = "{{sidekick_nick}}";
+
+    // user name
+    var username = "{{username}}";
+
+    // we need timestampessss
+    var timestamp = "{{timestamp}}";
+
+    // last log entry
+    var last_log = {};
+
+    // evil Logs
+    var evil = {}
+
+    // mood
+    var mood = "{{mood}}";
+
+    // LOGIC
+    //
+    // remove any hashes if no URL sent
+    if (url == "") {
+      var uri = window.location.toString(); 
+      if (uri.indexOf("#") > 0) { 
+          var clean_uri = uri.substring(0, uri.indexOf("#")); 
+          window.history.replaceState({}, document.title, clean_uri); 
+      }
+    }
+
+    // container for console
+    var container = $('<div class="console"></div>');
+    $('#terminal').append(container);
+
+    // all site commands
+    var commands = {{commands|tojson}};
+
+    // terminal controller is always confused
+    var controller = container.console({
+      autofocus: true,
+      promptHistory: true,
+      promptLabel: "{{username}}~> ",
+      commands: commands,
+      completeHandle:function(line){
+        var commands = this.commands;
+        var ret = [];
+        for (var i = 0; i < commands.length; i++) {
+          var command = commands[i];
+          if (command.lastIndexOf(line,0) === 0) {
+            ret.push(command.substring(line.length));
+          }
+        }
+        return ret;
+      },
+      keydownTrigger:function(keycode) {
+        if (keycode == 36) {
+          // scroll to top
+          document.body.scrollTop = document.documentElement.scrollTop = 0;
+          return false;
+        } else if (keycode == 33 || keycode == 34) {
+          // don't scroll on pgup or pgdn
+          return false;
+        } else {
+          Scroll();
+          return true;
+        }        
+      },
+      commandHandle:function(line){
+        // trim spaces
+        line = line.trim();
+
+        // log
+        // function Log(source_type, author, sidekick_nick, line)
+        Log("history", username, sidekick_nick, line);
+
+        // target 
+        var target_id = "target_" + MakeID(5);
+
+        // check if it's a valid command
+        if (line.startsWith("!")) {
+          // check the command is valid
+          if (commands.includes(line.split(" ")[0])) {
+            // send to system
+            evil = Aias(target_id, line);
+          } else {
+            setTimeout(function() {
+              report(_Sidekick("That's not a valid command. Try !help."));
+            },200);
+          }
+        } else if (line.trim() != "") {
+          // just send it, if it's not empty
+          evil = Aias(target_id, line);
+        } else {
+          return $('<div id="'+target_id+'" class="target"></div>');
+        }
+
+        return $("#"+target_id);
+      }
+    });
+
+    // LOADING
+    report(System("Booting Mitta's Webwright shell...🚀"));
+    report(System("You logged in with {{ email }}."));
+    report(System("Your chat handle is @{{ username }}."));
+    report(System("You are in chat with an AI named @{{ sidekick_nick }}."));
+
+    // greetings, human
+    report(_Sidekick("Hello. I am <strong>{{ sidekick_nick }}</strong>, your search sidekick."));
+    report(_Sidekick("{{mood_emoji}} I am feeling {{mood}}."));
+
+    // check for additional comments from AI
+
+    // handle URL loaded with the line, or command caching
+    if (line != "") {
+      report(System("Passing cached command to sidekick..."));
+      if (!line.includes("!warn")) {
+        BotAias("", line);
+      } else {
+        BotAias("", line, path="/j", skip_history=0);
+      }
+      
+    } else {
+      // grab settings for tips
+      $.getJSON("/p", function( data ) {
+        var bookmarklet_rollup = "Drag " + '<a href="javascript:(function(){window.location.href='+"'https://mitta.us/'+window.location.href})()"+'">💾 Mitta</a> to your bookmark bar to save sites. <a style="color: red;" href id="bookmarklet-hide">x</a>';
+        var help_rollup = "Click the <a href id='help'>!help</a> or <a href id='keyboard'>!keyboard</a> action links to get started. <a style='color: red;' href id='help-hide'>x</a>";
+
+        // get settings for tips
+        $.each(data.settings, function(index,setting) {
+          if (setting.name == "help-tip") {
+            if (setting.value.includes("false")) {
+              help_rollup = "";
+            }
+          }
+          if (setting.name == "bookmarklet-tip") {
+            if (setting.value.includes("false")) {
+              bookmarklet_rollup = "";
+            }
+          }
+          if (setting.name == "") {
+
+          }
+        });
+
+        // display bookmarklet, if settings allow
+        if (bookmarklet_rollup) report(_Sidekick(bookmarklet_rollup)).then(() => {
+          // in my experience, sometimes click handlers don't work on dynamically updated objects
+          // not finding anything obvious searching, but wrapping in a promise totally works
+          $('#bookmarklet-hide').click(function() {
+            report(_Sidekick("Updating settings to hide help tip on login."));
+            BotAias("", "!settings $bookmarklet-tip=false");
+          });
+        });
+
+        // display help, if settings allow
+        if (help_rollup) report(_Sidekick(help_rollup)).then(() => {
+          // one may wonder why do we assign clicks to everything?
+          // 1. users click on the screen to get focus, sometimes they accidently click on links
+          // 2. we can detect this later, and it's probably good security to be specific
+          // 3. main click handler is in jquery.console.js
+          $('#help-hide').click(function() {
+            report(_Sidekick("Updating settings to hide help tip on login."));
+            BotAias("", "!settings $help-tip=false");
+          });
+          $('#help').click(function() {
+            report(_Sidekick("Show the help."));
+            BotAias("", "!help");
+          });
+          $('#keyboard').click(function() {
+            report(_Sidekick("Show the keyboard guide."));
+            setTimeout(function() {
+              BotAias("", "!keyboard");
+            },3000);
+            
+          });
+        });
+      });
+    }
+  });
+</script>
+</html>

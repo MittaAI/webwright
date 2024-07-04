@@ -7,6 +7,7 @@ import time
 import random
 import traceback
 import asyncio
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.history import FileHistory
@@ -198,6 +199,7 @@ async def main():
 
 def entry_point():
     try:
+        print("starting")
         asyncio.run(main())
     except KeyboardInterrupt:
         print("system> Exiting gracefully...")
@@ -218,4 +220,5 @@ def entry_point():
         print("system> Shutdown complete.")
 
 if __name__ == "__main__":
+    print("main entry")
     entry_point()
