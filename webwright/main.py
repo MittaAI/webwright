@@ -154,9 +154,14 @@ async def main():
         anthropic_token = input("Please enter your Anthropic API key: ")
         set_anthropic_api_key(anthropic_token)
 
-    function_call_model = input("Choose function call model (openai/anthropic): ").lower()
-    while function_call_model not in ["openai", "anthropic"]:
-        function_call_model = input("Invalid choice. Please enter 'openai' or 'anthropic': ").lower()
+    
+    function_call_model = "openai"
+
+    if not function_call_model:
+        function_call_model = input("Choose function call model (openai/anthropic): ").lower()
+
+        while function_call_model not in ["openai", "anthropic"]:
+            function_call_model = input("Invalid choice. Please enter 'openai' or 'anthropic': ").lower()
 
     setup_ssh_key()
     

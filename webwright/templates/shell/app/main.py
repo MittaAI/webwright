@@ -7,7 +7,7 @@ def create_app():
 
     @app.route('/')
     def index():
-        return render_template('index.html')
+        return render_template('pages/index.html')
 
     @app.route('/c', methods=['GET', 'POST'])
     def console():
@@ -22,7 +22,7 @@ def create_app():
         commands = build_command_list()
 
         response = make_response(render_template(
-            'shell.html',
+            'pages/shell.html',
             line=line,
             commands=commands,
             timestamp=timestamp
