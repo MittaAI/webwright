@@ -13,23 +13,33 @@ def create_app():
     def console():
         now = datetime.datetime.now(datetime.timezone.utc)
         timestamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
-
         try:
             line = request.cookies.get('line')
         except Exception:
             line = ""
-
         commands = build_command_list()
-
         response = make_response(render_template(
             'pages/shell.html',
             line=line,
             commands=commands,
             timestamp=timestamp
         ))
-
         response.set_cookie('line', '', expires=0)
+        return response
 
+    @app.route('/base.js')
+    def base_js():
+        now = datetime.datetime.now(datetime.timezone.utc)
+        timestamp = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        # Add other variables as needed
+        context = {
+            'timestamp': timestamp,
+            'line': request.args.get('line', ''),
+        }
+        
+        response = make_response(render_template('js/base.js', **context))
+        response.headers['Content-Type'] = 'application/javascript'
         return response
 
     return app

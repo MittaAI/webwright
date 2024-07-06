@@ -13,6 +13,8 @@ def search_file(filename: str) -> dict:
     current_dir = os.getcwd()
     matches = []
     for root, dirs, files in os.walk(current_dir):
+        if "__pycache__" in root:
+            continue
         for file in fnmatch.filter(files, f"*{filename}*"):
             matches.append(os.path.join(root, file))
     if matches:
