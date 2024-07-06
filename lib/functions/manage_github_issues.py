@@ -9,7 +9,7 @@ logger = get_logger()
 @function_info_decorator
 def manage_github_issues(action: str, issue_number: int = None, issue_title: str = None, issue_body: str = None, comment_body: str = None, state: str = 'all') -> dict:
     """
-    Manages GitHub issues: lists issues, creates an issue, comments on an issue, and closes an issue.
+    Allows the local Mitta agent to manage GitHub issues: lists issues, creates an issue, comments on an issue, and closes an issue.
     :param action: The action to perform: 'list', 'create', 'comment', or 'close'.
     :type action: str
     :param issue_number: The number of the issue to comment on or close (required for 'comment' and 'close' actions) (optional).

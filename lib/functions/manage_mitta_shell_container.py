@@ -9,7 +9,7 @@ import pkg_resources
 @function_info_decorator
 def manage_mitta_shell_container(action: str) -> dict:
     """
-    Manages a Docker container for the Mitta Shell application, allowing start, stop, restart, and recreate actions.
+    Allows the local Mitta agent to manages a Docker container for the Shell application and appliations the shell builds for the user, allowing start, stop, restart, and recreate actions.
     
     :param action: The action to perform: 'start', 'stop', 'restart', or 'recreate'.
     :return: A dictionary containing the success status and any relevant messages.

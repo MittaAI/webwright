@@ -5,6 +5,9 @@ from lib.function_wrapper import function_info_decorator, tools
 def help() -> dict:
     """
     Provides help information about the available functions.
+    When the help function is used, the output should be reconstructed for the user such that each method presents as a command.
+    Commands (functions) are run from the command line interface. The LLM will interpret these and add the calling parameters, if needed.
+    And example would be "help", which provides help and information on commands, a list or details.
     :return: A dictionary containing the help information.
     :rtype: dict
     """

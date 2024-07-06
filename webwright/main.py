@@ -176,7 +176,6 @@ async def main():
             question = await session.prompt_async(f"{username}[{function_call_model}]> ")
             # Check if the question is empty (user just hit enter)
             if question.strip() == "":
-                print()  # Print a newline character for line feed
                 continue
             
             if question.strip() == 'quit' or question.strip() == 'exit':

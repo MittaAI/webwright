@@ -1,22 +1,26 @@
 import os
+import fnmatch
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
 def search_file(filename: str) -> dict:
     """
-    Searches the current directory and all subdirectories for a file with the specified name.
-    :param filename: The name of the file to search for.
-    :return: A dictionary containing the full path of the file if found, otherwise an error message.
+    Searches the current directory and all subdirectories for files matching the specified partial name.
+    :param filename: The partial name of the file to search for.
+    :return: A dictionary containing a list of full paths for matching files if found, otherwise an error message.
     :rtype: dict
     """
     current_dir = os.getcwd()
+    matches = []
     for root, dirs, files in os.walk(current_dir):
-        if filename in files:
-            return {
-                "success": True,
-                "full_path": os.path.join(root, filename)
-            }
+        for file in fnmatch.filter(files, f"*{filename}*"):
+            matches.append(os.path.join(root, file))
+    if matches:
+        return {
+            "success": True,
+            "matches": matches
+        }
     return {
         "success": False,
-        "message": f"File '{filename}' not found in directory '{current_dir}'"
+        "message": f"No files matching '{filename}' found in directory '{current_dir}'"
     }

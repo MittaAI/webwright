@@ -6,7 +6,7 @@ from lib.function_wrapper import function_info_decorator
 @function_info_decorator
 def install_package(package: str) -> dict:
     """
-    Installs a Python package using pip.
+    Allows the local Mitta agent to install a Python package using pip.
 
     :param package: The name of the package to install.
     :type package: str

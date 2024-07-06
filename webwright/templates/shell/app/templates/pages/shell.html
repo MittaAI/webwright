@@ -26,7 +26,7 @@
   <!-- Custom JS (keep local) -->
   <script src="{{ url_for('static', filename='js/jquery.console.js') }}?version=11"></script>
   <script src="{{ url_for('static', filename='js/dropupload.js') }}?version=67"></script>
-  <script src="{{ url_for('base_js', filename='js/base.js') }}"></script>
+  <script src="{{ url_for('base_js') }}"></script>
   
   <!-- jQuery UI -->
   <script src="https://cdn.jsdelivr.net/npm/jquery-ui@1.13.2/dist/jquery-ui.min.js"></script>
@@ -102,7 +102,7 @@
     }
     
     // display update
-    function UpdateSidekick(nick, _mood) {
+    function UpdateSidekick(nick) {
     // update public
       $(document).prop('title', nick+"@mitta.us");
       sidekick_nick = nick;
@@ -290,7 +290,7 @@
         } else if (hide_prompt == true) {
           rollup_HTML = rollup_HTML + '<div><span class="sidekick_prompt"></span>'+_words[index]+'</div>';
         } else {
-          rollup_HTML = rollup_HTML + '<div><span class="sidekick_prompt">'+sidekick_nick+moodToAsciiEmoji(mood).ascii+'&gt; </span>'+_words[index]+'</div>';
+          rollup_HTML = rollup_HTML + '<div><span class="sidekick_prompt">'+sidekick_nick+'&gt; </span>'+_words[index]+'</div>';
         }
         if (_words.length > 3) {
           hide_prompt = true;
@@ -315,12 +315,12 @@
 
     // without logging
     function _Sidekick(words) {
-      return $('<div><span class="sidekick_prompt">'+sidekick_nick+moodToAsciiEmoji(mood).ascii+'&gt;</span> '+words+'</div>');
+      return $('<div><span class="sidekick_prompt">'+sidekick_nick+'&gt;</span> '+words+'</div>');
     }
 
     // without logging
     function _Sidekick_HTML(words) {
-      return '<div><span class="sidekick_prompt">'+sidekick_nick+moodToAsciiEmoji(mood).ascii+'&gt;</span> '+words+'</div>';
+      return '<div><span class="sidekick_prompt">'+sidekick_nick+'&gt;</span> '+words+'</div>';
     }
 
     // remove X
@@ -456,8 +456,7 @@
     report(System("You are in chat with an AI named @{{ sidekick_nick }}."));
 
     // greetings, human
-    report(_Sidekick("Hello. I am <strong>{{ sidekick_nick }}</strong>, your search sidekick."));
-    report(_Sidekick("{{mood_emoji}} I am feeling {{mood}}."));
+    report(_Sidekick("Hello. I am your search sidekick."));
 
     // check for additional comments from AI
 
