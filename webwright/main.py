@@ -8,14 +8,14 @@ import random
 import traceback
 import asyncio
 
-from prompt_toolkit import PromptSession
-from prompt_toolkit import print_formatted_text
+from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.formatted_text import FormattedText, PygmentsTokens
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.clipboard import ClipboardData
+from prompt_toolkit.styles import Style
 
 from pygments import highlight
 from pygments.lexers import PythonLexer
@@ -72,76 +72,103 @@ history_file = os.path.join(webwright_dir, '.webwright_history')
 history = FileHistory(history_file)
 session = PromptSession(history=history, key_bindings=bindings)
 
+custom_style = Style.from_dict({
+    'code': '#ansiyellow',
+    'header': '#ansigreen bold',
+    'bold': 'bold',
+    'inline-code': '#ansicyan',
+    'error': '#ff8c00',  # Add this line for orange error messages
+})
+
 async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, function_call_model):
     try:
         success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, function_call_model=function_call_model, history=conversation_history)
         
         logging.debug(f"AI response: {results}")
-           
+
         if success:
-            if "response" in results:
+            if "response" in results and results["response"] is not None:
                 return True, {"explanation": results["response"]}
+            elif "function_call" in results:
+                try:
+                    function_call = results["function_call"]
+                    arguments = json.loads(function_call.arguments)
+                    function_response = f"Function call: {function_call.name}\nArguments: {json.dumps(arguments, indent=2)}"
+                    return True, {"explanation": function_response}
+                except json.JSONDecodeError:
+                    function_response = f"Function call: {function_call.name}\nArguments (raw): {function_call.arguments}"
+                    return True, {"explanation": function_response}
             else:
-                print("system> An unexpected response format was received.")
-                return False, {"error": "Unexpected response format"}
+                error_msg = "An unexpected response format was received."
+                print(results)
+                print_formatted_text(FormattedText([('class:error', f"system> Error: {error_msg}")]), style=custom_style)
+                return False, {"error": error_msg}
         else:
             if "error" in results:
                 error_message = results["error"]
-                print(f"system> Error: {error_message}")
+                print_formatted_text(FormattedText([('class:error', f"system> Error: {error_message}")]), style=custom_style)
                 logging.error(f"Error: {error_message}")
             else:
-                print("system> An unknown error occurred.")
-            return False, {"error": error_message if "error" in results else "Unknown error"}
+                error_message = "An unknown error occurred."
+                print_formatted_text(FormattedText([('class:error', f"system> Error: {error_message}")]), style=custom_style)
+            return False, {"error": error_message}
     except Exception as e:
-        error_message = f"system> Error: {str(e)}"
-        print(error_message)
+        error_message = f"Error: {str(e)}"
+        print_formatted_text(FormattedText([('class:error', f"system> {error_message}")]), style=custom_style)
         logging.error(error_message)
         logging.error(traceback.format_exc())
         return False, {"error": error_message}
 
 def format_response(response):
-    formatted_text = FormattedText()
+    if response is None:
+        return FormattedText([('class:error', "No response to format.\n")])
+    
+    formatted_text = []
     lines = response.split('\n')
     in_code_block = False
-    in_thinking_block = False
     code_lines = []
 
     for line in lines:
-        if in_thinking_block:
-            if '</thinking>' in line:
-                in_thinking_block = False
-                formatted_text.append(('', '\n'))  # Add a newline after thinking block
-            continue
-        
-        if '<thinking>' in line:
-            in_thinking_block = True
-            formatted_text.append(('italic', 'thinking\n'))
+        if line.startswith('```'):
+            if in_code_block:
+                # End of code block
+                in_code_block = False
+                formatted_text.append(('class:code', ''.join(code_lines)))
+                code_lines = []
+            else:
+                # Start of code block
+                in_code_block = True
             continue
 
-        if line.startswith('```python'):
-            in_code_block = True
-            continue
-        elif line.startswith('```') and in_code_block:
-            in_code_block = False
-            try:
-                tokens = PygmentsTokens(PythonLexer().get_tokens(''.join(code_lines)))
-                formatted_text.extend([(token[0], token[1]) for token in tokens])
-            except Exception as e:
-                # If tokenization fails, fall back to plain text
-                formatted_text.extend([('', line + '\n') for line in code_lines])
-            formatted_text.append(('', '\n'))
-            code_lines = []
-        elif in_code_block:
+        if in_code_block:
             code_lines.append(line + '\n')
         else:
-            if line.startswith('**'):
-                formatted_text.append(('bold', line[2:-2]))
+            # Handle headers
+            if line.startswith('#'):
+                level = len(line.split()[0])
+                formatted_text.append(('class:header', line[level:].strip() + '\n'))
+            # Handle bold text
+            elif '**' in line:
+                parts = line.split('**')
+                for i, part in enumerate(parts):
+                    if i % 2 == 0:
+                        formatted_text.append(('', part))
+                    else:
+                        formatted_text.append(('class:bold', part))
+                formatted_text.append(('', '\n'))
+            # Handle inline code
+            elif '`' in line:
+                parts = line.split('`')
+                for i, part in enumerate(parts):
+                    if i % 2 == 0:
+                        formatted_text.append(('', part))
+                    else:
+                        formatted_text.append(('class:inline-code', part))
                 formatted_text.append(('', '\n'))
             else:
                 formatted_text.append(('', line + '\n'))
 
-    return formatted_text
-
+    return FormattedText(formatted_text)
 
 async def main():
     openai_token = get_openai_api_key()
@@ -178,7 +205,7 @@ async def main():
             if question.strip() == "":
                 continue
             
-            if question.strip() == 'quit' or question.strip() == 'exit':
+            if question.strip().lower() in ['quit', 'exit']:
                 print("system> Bye!")
                 sys.exit()
             
@@ -189,17 +216,19 @@ async def main():
             
             if success and "explanation" in results:
                 formatted_response = format_response(results['explanation'])
-                print_formatted_text(formatted_response)
+                print_formatted_text(formatted_response, style=custom_style)
                 conversation_history.append({"role": "assistant", "content": results["explanation"]})
                 logging.info(f"Main: Added assistant response to history. Current history: {conversation_history}")
+            elif not success and "error" in results:
+                # Error messages are now handled in process_shell_query, so we don't need to print them here
+                pass
             else:
-                print("system> An error occurred: " + results.get("error", "Unknown error"))
+                print_formatted_text(FormattedText([('class:error', "system> An unexpected error occurred.")]), style=custom_style)
 
         except Exception as e:
-            print(f"system> Error: {str(e)}")
+            print_formatted_text(FormattedText([('class:error', f"system> Error: {str(e)}")]), style=custom_style)
             logging.error(f"Error: {str(e)}")
             logging.error(traceback.format_exc())
-
 
 def entry_point():
     try:

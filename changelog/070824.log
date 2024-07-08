@@ -1,0 +1,18 @@
+## Changes made on 070824:
+
+### Modified Files
+- **lib/aifunc.py**
+  - Removed unused imports `tenacity` and some comments.
+  - Refactored the logic to handle function calls in a loop until a maximum limit is reached.
+  - Added function call execution results processing and message updates.
+
+- **webwright/main.py**
+  - Consolidated several `prompt_toolkit` imports into a single statement.
+  - Added `custom_style` dictionary to customize the shell's style.
+  - Enhanced response formatting by handling headers, bold text, and inline code.
+  - Updated the main loop to handle command exit more gracefully.
+  - Improved error handling for unexpected response formats.
+
+- **webwright/templates/shell/app/templates/pages/shell.html**
+  - Removed unused `logout()` function.
+

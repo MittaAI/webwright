@@ -1,5 +1,3 @@
-# aifunc.py
-
 import json
 import logging
 import os
@@ -27,8 +25,6 @@ logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=loggi
 
 # Import helper functions and decorators
 from lib.function_wrapper import function_info_decorator, tools, callable_registry
-from tenacity import retry, wait_random_exponential, stop_after_attempt
-
 from git import Repo
 
 # Storage
@@ -130,100 +126,120 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
 
     messages = history
 
-    # Get the initial response
-    if function_call_model == "openai":
-        chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
-        if not chat_response:
-            return False, {"error": "Failed to get a response from OpenAI"}
-        assistant_message = chat_response.choices[0].message
-        
-        if assistant_message.tool_calls:
-            function_call = assistant_message.tool_calls[0].function
-            function_name = function_call.name
-            arguments = json.loads(function_call.arguments)
-            tool_use_id = assistant_message.tool_calls[0].id
-        else:
-            return True, {"response": assistant_message.content}
-    else:  # Anthropic
-        logging.info(f"calling anthropic with messages: {messages}")
-        chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
-        if not chat_response:
-            return False, {"error": "Failed to get a response from Anthropic"}
-        
-        assistant_message = chat_response.content
-        tool_use = next((item for item in assistant_message if item.type == 'tool_use'), None)
-        
-        logging.info(assistant_message)
-        if tool_use:
-            function_name = tool_use.name
-            arguments = tool_use.input
-            tool_use_id = tool_use.id
-        else:
-            text_content = next((item.text for item in assistant_message if item.type == 'text'), None)
-            if text_content:
-                return True, {"response": text_content}
-            else:
-                return False, {"error": "Unexpected response format from Anthropic"}
-
-    if not function_name:
-        return True, {"response": "No function call was made."}
-
-    # Execute the function
-    spinner = Halo(text='Executing function...', spinner='dots')
-    spinner.start()
-    json_results_str = await execute_function_by_name(function_name, **arguments)
-    logging.info(json_results_str)
-    spinner.stop()
+    max_function_calls = 3
+    function_call_count = 0
     
-    results = json.loads(json_results_str) if not isinstance(json_results_str, dict) else json_results_str
+    while function_call_count < max_function_calls:
+
+        # Get the initial response
+        spinner = Halo(text='Calling the model...', spinner='dots')
+        spinner.start()
+        
+        if function_call_model == "openai":
+            chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
+
+            if not chat_response:
+                spinner.stop()
+                return False, {"error": "Failed to get a response from OpenAI"}
+            assistant_message = chat_response.choices[0].message
+            
+            if assistant_message.tool_calls:
+                function_call = assistant_message.tool_calls[0].function
+                function_name = function_call.name
+                arguments = json.loads(function_call.arguments)
+                tool_use_id = assistant_message.tool_calls[0].id
+            else:
+                spinner.stop()
+                return True, {"response": assistant_message.content}
+        else:  # Anthropic
+            chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
+            if not chat_response:
+                spinner.stop()
+                return False, {"error": "Failed to get a response from Anthropic"}
+            
+            assistant_message = chat_response.content
+            tool_use = next((item for item in assistant_message if item.type == 'tool_use'), None)
+            
+            if tool_use:
+                function_name = tool_use.name
+                arguments = tool_use.input
+                tool_use_id = tool_use.id
+            else:
+                text_content = next((item.text for item in assistant_message if item.type == 'text'), None)
+                if text_content:
+                    spinner.stop()
+                    return True, {"response": text_content}
+                else:
+                    spinner.stop()
+                    return False, {"error": "Unexpected response format from Anthropic"}
+
+        spinner.stop()
+
+        if not function_name:
+            break
+
+        # Execute the function
+        spinner = Halo(text='Executing function...', spinner='dots')
+        spinner.start()
+        json_results_str = await execute_function_by_name(function_name, **arguments)
+        logging.info(json_results_str)
+        spinner.stop()
+    
+        results = json.loads(json_results_str) if not isinstance(json_results_str, dict) else json_results_str
+        
+        # Update messages with the function call and its result
+        if function_call_model == "openai":
+            messages += [
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {
+                        "name": function_name,
+                        "arguments": json.dumps(arguments)
+                    }
+                },
+                {
+                    "role": "function",
+                    "name": function_name,
+                    "content": json.dumps(results)
+                }
+            ]
+        else:  # Anthropic
+            messages += [
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": tool_use_id,
+                            "name": function_name,
+                            "input": arguments
+                        }
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_id,
+                            "content": json.dumps(results)
+                        }
+                    ]
+                }
+            ]
+
+        function_call_count += 1
 
     # Formulate final response using the tool results
     if function_call_model == "openai":
-        temp_messages = messages + [
-            {
-                "role": "assistant",
-                "content": None,
-                "function_call": {
-                    "name": function_name,
-                    "arguments": json.dumps(arguments)
-                }
-            },
-            {
-                "role": "function",
-                "name": function_name,
-                "content": json.dumps(results)
-            }
-        ]
-        final_response = await openai_chat_completion_request(messages=temp_messages, openai_token=openai_token, tools=tools)
+        final_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from OpenAI"}
         final_message = final_response.choices[0].message.content
         return True, {"response": final_message}
     else:  # Anthropic
-        temp_messages = messages + [
-            {
-                "role": "assistant",
-                "content": [
-                    {
-                        "type": "tool_use",
-                        "id": tool_use_id,
-                        "name": function_name,
-                        "input": arguments
-                    }
-                ]
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": tool_use_id,
-                        "content": json.dumps(results)
-                    }
-                ]
-            }
-        ]
-        final_response = await anthropic_chat_completion_request(messages=temp_messages, anthropic_token=anthropic_token, tools=tools)
+        final_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from Anthropic"}
         
