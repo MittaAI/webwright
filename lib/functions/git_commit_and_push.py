@@ -1,14 +1,14 @@
 import os
-from git import Repo
 from datetime import datetime
-from lib.function_wrapper import function_info_decorator
+from git import Repo, Git
 
-@function_info_decorator
+
 def git_commit_and_push(commit_message: str = "Automated commit") -> dict:
     """
     Automatically stages all changes, commits them with the provided message, generates a changelog,
     saves it in the changelog directory with a timestamp filename, and pushes the changes to the remote repository.
-    NOTE: The LLM should use the git_diff function first to get a good commit message. 
+    NOTE: The LLM should use the git_diff function first to get a good commit message.
+    
     :param commit_message: The commit message to use for the commit. Defaults to "Automated commit".
     :type commit_message: str
     :return: A dictionary containing the status of the commit and push operation.
@@ -17,17 +17,20 @@ def git_commit_and_push(commit_message: str = "Automated commit") -> dict:
     try:
         # Automatically detect the current repository path
         repo_path = os.getcwd()
+        
         # Initialize the repository
         repo = Repo(repo_path)
+        
         # Get the current date and time for the log filename
         now = datetime.now()
         timestamp = now.strftime("%Y%m%d%H%M")
         changelog_filename = f"changelog_{timestamp}.txt"
         changelog_dir = os.path.join(repo_path, 'changelog')
         changelog_path = os.path.join(changelog_dir, changelog_filename)
+        
         # Ensure the changelog directory exists
         os.makedirs(changelog_dir, exist_ok=True)
-        
+
         # Write the commit message to the changelog
         with open(changelog_path, 'w') as changelog_file:
             changelog_file.write("# Changelog\n\n")
@@ -41,19 +44,22 @@ def git_commit_and_push(commit_message: str = "Automated commit") -> dict:
         if repo.is_dirty(untracked_files=True):
             # Add all changes to the staging area
             repo.git.add(A=True)
+
             # Commit the changes
             repo.index.commit(commit_message)
+
             # Push the changes to the remote repository
             origin = repo.remote(name='origin')
             origin.push()
+
             return {
                 "success": True,
                 "message": "Changes have been committed and pushed to the remote repository."
             }
         else:
             return {
-                "success": True,
-                "message": "No changes to commit."
+                "success": False,
+                "message": "There are no changes to commit."
             }
     except Exception as e:
         return {
