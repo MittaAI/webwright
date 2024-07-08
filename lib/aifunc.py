@@ -126,7 +126,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
 
     messages = history
 
-    max_function_calls = 3
+    max_function_calls = 6
     function_call_count = 0
     
     while function_call_count < max_function_calls:

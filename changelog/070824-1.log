@@ -1,0 +1,18 @@
+# Changelog
+
+## [Unreleased] - 2024-07-08
+### Added
+- Created a Python script to list the first 23 prime numbers and executed it.
+- New helper function `find_chrome_executable` in `browser.py` to dynamically find the Chrome executable.
+- Added functionality to the `filesystem` function for copying files and directories.
+- Made `project_directory` parameter optional in `get_project_files` function, defaulting to the current directory.
+- Enhanced `search_file` function to also list contents of found directories.
+
+### Changed
+- Increased the `max_function_calls` limit from 3 to 6 in `aifunc.py`.
+- Updated the `browser` function to use the new `find_chrome_executable` helper.
+- Modified `filesystem` function to handle copying of files and directories.
+- Updated `get_project_files` and `search_file` functions to handle optional parameters and directory listings.
+
+### Removed
+- Deleted the temporary test file `set_test.py`.

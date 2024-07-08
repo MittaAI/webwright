@@ -5,10 +5,11 @@ from git import Repo
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
-def filesystem(path: str, directory: bool = False, delete: bool = False, force: bool = False) -> dict:
+def filesystem(path: str, directory: bool = False, delete: bool = False, force: bool = False, copy: bool = False, dest_path: str = None) -> dict:
     """
     Creates or deletes a directory or a file based on the provided path and flags.
     If the path is just a file name, it defaults to the current directory.
+    Additionally, copies a file or directory to a destination path if the copy flag is set.
     :param path: The path of the directory or file to create or delete.
     :type path: str
     :param directory: A flag indicating whether to create a directory (True) or a file (False).
@@ -17,6 +18,10 @@ def filesystem(path: str, directory: bool = False, delete: bool = False, force: 
     :type delete: bool
     :param force: A flag indicating whether to force the deletion of a non-empty directory.
     :type force: bool
+    :param copy: A flag indicating whether to copy the directory or file to dest_path.
+    :type copy: bool
+    :param dest_path: The destination path where the directory or file should be copied.
+    :type dest_path: str
     :return: A dictionary indicating the success or failure of the operation.
     :rtype: dict
     """
@@ -24,6 +29,24 @@ def filesystem(path: str, directory: bool = False, delete: bool = False, force: 
         # If path is just a file name, join it with the current directory
         if not os.path.dirname(path):
             path = os.path.join(os.getcwd(), path)
+
+        if copy:
+            # Check if the path exists
+            if not os.path.exists(path):
+                return {
+                    "success": False,
+                    "error": "Path does not exist",
+                    "reason": f"The path '{path}' does not exist."
+                }
+            # Copy file or directory to dest_path
+            if os.path.isdir(path):
+                shutil.copytree(path, dest_path)
+            else:
+                shutil.copy2(path, dest_path)
+            return {
+                "success": True,
+                "message": f"Path '{path}' copied successfully to '{dest_path}'."
+            }
 
         if delete:
             # Check if the path exists

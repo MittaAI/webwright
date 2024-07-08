@@ -2,16 +2,20 @@ import os
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
-def get_project_files(project_directory: str) -> dict:
+def get_project_files(project_directory: str = None) -> dict:
     """
-    Lists all the files in the project directory and returns them as a directory listing,
+    Lists all the files in the specified project directory (or current directory if not specified) and returns them as a directory listing,
     ignoring __pycache__, .git, dot files, and other common non-project files.
-    :param project_directory: The path to the project directory.
+    :param project_directory: The path to the project directory. Defaults to the current directory.
     :type project_directory: str
     :return: A dictionary containing the status of the operation and the directory listing.
     :rtype: dict
     """
     try:
+        # Set the default project directory to the current directory if not specified
+        if project_directory is None:
+            project_directory = os.getcwd()
+
         # Check if the project directory exists
         if not os.path.isdir(project_directory):
             return {
