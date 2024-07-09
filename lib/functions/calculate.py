@@ -8,7 +8,7 @@ def calculate(expression: str) -> dict:
     """
     Calculates the result of a given mathematical expression. 
     Supports functions like sqrt() and variables like pi, e, etc. from the math module.
-
+    When the model returns a value, it can put \(<val>\) around it to colorize it.
     :param expression: The mathematical expression to evaluate.
     :type expression: str
     :return: A dictionary containing the result of the calculation.

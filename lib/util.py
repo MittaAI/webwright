@@ -5,6 +5,9 @@ import shutil
 from configparser import ConfigParser
 from coolname import generate_slug
 
+import re
+from prompt_toolkit.formatted_text import FormattedText
+
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
 os.makedirs(webwright_dir, exist_ok=True)
@@ -173,6 +176,68 @@ def get_anthropic_api_key():
 
 def set_anthropic_api_key(api_key):
     set_config_value("config", "ANTHROPIC_API_KEY", api_key)
+
+def format_response(response):
+    if response is None:
+        return FormattedText([('class:error', "No response to format.\n")])
+    
+    formatted_text = []
+    lines = response.split('\n')
+    in_code_block = False
+    in_thinking_block = False
+    code_lines = []
+    
+    math_pattern = re.compile(r'\\\(.*?\\\)')
+
+    for line in lines:
+        if line.startswith('```'):
+            if in_code_block:
+                # End of code block
+                in_code_block = False
+                formatted_text.append(('class:code', ''.join(code_lines)))
+                code_lines = []
+            else:
+                # Start of code block
+                in_code_block = True
+            continue
+        
+        if in_code_block:
+            code_lines.append(line + '\n')
+            continue
+        
+        if line.startswith('<thinking>'):
+            in_thinking_block = True
+            formatted_text.append(('class:thinking', line[10:] + '\n'))
+            continue
+        elif line.startswith('</thinking>'):
+            in_thinking_block = False
+            continue
+        
+        if in_thinking_block:
+            formatted_text.append(('class:thinking', line + '\n'))
+            continue
+        
+        # Handle headers
+        if line.startswith('#'):
+            level = len(line.split()[0])
+            formatted_text.append(('class:header', line[level:].strip() + '\n'))
+            continue
+        
+        # Handle bold text, inline code, and math expressions
+        parts = re.split(r'(\*\*.*?\*\*|`.*?`|\\\(.*?\\\))', line)
+        for part in parts:
+            if part.startswith('**') and part.endswith('**'):
+                formatted_text.append(('class:bold', part[2:-2]))
+            elif part.startswith('`') and part.endswith('`'):
+                formatted_text.append(('class:inline-code', part[1:-1]))
+            elif math_pattern.match(part):
+                formatted_text.append(('class:math', part[2:-2]))  
+            else:
+                formatted_text.append(('', part))
+        
+        formatted_text.append(('', '\n'))
+    
+    return FormattedText(formatted_text)
 
 # Initialize configuration
 read_config()

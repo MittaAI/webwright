@@ -9,10 +9,15 @@ from halo import Halo
 from openai import AsyncOpenAI
 
 # Anthropic imports
-from anthropic import AsyncAnthropic, HUMAN_PROMPT, AI_PROMPT
+from anthropic import AsyncAnthropic
+from anthropic.types import TextBlock, ToolUseBlock
 
 # Utility imports (assuming these are from your local modules)
 from lib.util import create_and_check_directory
+
+# Import helper functions and decorators
+from lib.function_wrapper import function_info_decorator, tools, callable_registry
+from git import Repo
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -22,10 +27,6 @@ os.makedirs(webwright_dir, exist_ok=True)
 log_dir = os.path.join(webwright_dir, 'logs')
 os.makedirs(log_dir, exist_ok=True)
 logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Import helper functions and decorators
-from lib.function_wrapper import function_info_decorator, tools, callable_registry
-from git import Repo
 
 # Storage
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -44,19 +45,15 @@ async def execute_function_by_name(function_name, **kwargs):
     except Exception as e:
         return json.dumps({"error": str(e)})
 
-
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def openai_chat_completion_request(messages=None, openai_token=None, tools=None, tool_choice=None, model="gpt-4o"):
-    """
-    Make an asynchronous request to OpenAI's chat completion API.
-    """
+async def openai_chat_completion_request(messages=None, openai_token=None, tools=None, tool_choice="auto", model="gpt-4o"):
     client = AsyncOpenAI(api_key=openai_token)
 
     if tools:
         function_names = [tool['function']['name'] for tool in tools]
         logging.info("Available OpenAI functions: %s", function_names)
 
-    logging.info(f"Messages: {messages}")
+    # logging.info(f"Messages: {messages}")
     try:
         response = await client.chat.completions.create(
             model=model,
@@ -68,6 +65,7 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
     except Exception as e:
         logging.error("Unable to generate OpenAI ChatCompletion response: %s", e)
         raise
+
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
 async def anthropic_chat_completion_request(messages=None, anthropic_token=None, tools=None, model="claude-3-opus-20240229"):
@@ -91,9 +89,11 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
                 anthropic_tools.append(tool)
         
         function_names = [tool['name'] for tool in anthropic_tools]
-        logging.info("Available Anthropic functions: %s", function_names)
+        # logging.info("Available Anthropic functions: %s", function_names)
     else:
         anthropic_tools = None
+
+    # logging.info(f"Anthropic request payload: {json.dumps({'model': model, 'max_tokens': 1024, 'messages': messages, 'tools': anthropic_tools}, indent=2, default=str)}")
 
     try:
         response = await client.messages.create(
@@ -109,6 +109,9 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
 
 
 async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", function_call_model="openai", upload_dir=UPLOAD_DIR, history=None):
+    # Ensure text_content is initialized
+    text_content = ""
+    
     if function_call_model not in ["openai", "anthropic"]:
         raise ValueError("function_call_model must be either 'openai' or 'anthropic'")
     
@@ -117,7 +120,6 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
     elif function_call_model == "anthropic" and not anthropic_token:
         raise ValueError("Anthropic token is required when function_call_model is 'anthropic'")
     
-    # Ensure the upload directory and the username directory under that exist
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
     
@@ -126,12 +128,14 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
 
     messages = history
 
+    logging.info(f"Initial length of messages: {len(messages)}")
+    total_characters = sum(len(message['content']) for message in messages if 'content' in message and message['content'] is not None)
+    logging.info(f"Total characters in all messages: {total_characters}")
+
     max_function_calls = 6
     function_call_count = 0
     
     while function_call_count < max_function_calls:
-
-        # Get the initial response
         spinner = Halo(text='Calling the model...', spinner='dots')
         spinner.start()
         
@@ -144,92 +148,115 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             assistant_message = chat_response.choices[0].message
             
             if assistant_message.tool_calls:
-                function_call = assistant_message.tool_calls[0].function
-                function_name = function_call.name
-                arguments = json.loads(function_call.arguments)
-                tool_use_id = assistant_message.tool_calls[0].id
+                function_calls = []
+                for tool_call in assistant_message.tool_calls:
+                    function_calls.append({
+                        "name": tool_call.function.name,
+                        "arguments": json.loads(tool_call.function.arguments),
+                        "id": tool_call.id
+                    })
             else:
+                # AI provided a direct response without calling any functions
                 spinner.stop()
                 return True, {"response": assistant_message.content}
+        
         else:  # Anthropic
             chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
             if not chat_response:
                 spinner.stop()
                 return False, {"error": "Failed to get a response from Anthropic"}
             
-            assistant_message = chat_response.content
-            tool_use = next((item for item in assistant_message if item.type == 'tool_use'), None)
+            logging.info(f"Anthropic response: {chat_response}")
             
-            if tool_use:
-                function_name = tool_use.name
-                arguments = tool_use.input
-                tool_use_id = tool_use.id
-            else:
-                text_content = next((item.text for item in assistant_message if item.type == 'text'), None)
-                if text_content:
-                    spinner.stop()
-                    return True, {"response": text_content}
-                else:
-                    spinner.stop()
-                    return False, {"error": "Unexpected response format from Anthropic"}
+            function_calls = []
+
+            for content_item in chat_response.content:
+                if isinstance(content_item, TextBlock):
+                    text_content += content_item.text
+                elif isinstance(content_item, ToolUseBlock):
+                    function_calls.append({
+                        "name": content_item.name,
+                        "arguments": content_item.input,
+                        "id": content_item.id
+                    })
+
+            logging.info(f"Extracted function calls: {function_calls}")
+            logging.info(f"Extracted text content: {text_content}")
+
+            if not function_calls:
+                # AI provided a direct response without calling any functions
+                spinner.stop()
+                return True, {"response": text_content.strip()}
 
         spinner.stop()
 
-        if not function_name:
+        if not function_calls:
             break
 
-        # Execute the function
-        spinner = Halo(text='Executing function...', spinner='dots')
+        # Execute functions in parallel
+        spinner = Halo(text='Executing functions...', spinner='dots')
         spinner.start()
-        json_results_str = await execute_function_by_name(function_name, **arguments)
-        logging.info(json_results_str)
-        spinner.stop()
-    
-        results = json.loads(json_results_str) if not isinstance(json_results_str, dict) else json_results_str
         
-        # Update messages with the function call and its result
-        if function_call_model == "openai":
-            messages += [
-                {
+        async def execute_function(func_call):
+            result = await execute_function_by_name(func_call["name"], **func_call["arguments"])
+            return {"id": func_call["id"], "result": result}
+
+        function_results = await asyncio.gather(*[execute_function(func_call) for func_call in function_calls])
+        
+        spinner.stop()
+
+        # Update messages with function calls and results
+        new_message_content = []
+        if text_content.strip():
+            new_message_content.append({
+                "type": "text",
+                "text": text_content.strip()
+            })
+
+        for func_call in function_calls:
+            if function_call_model == "openai":
+                messages.append({
                     "role": "assistant",
                     "content": None,
                     "function_call": {
-                        "name": function_name,
-                        "arguments": json.dumps(arguments)
+                        "name": func_call["name"],
+                        "arguments": json.dumps(func_call["arguments"])
                     }
-                },
-                {
+                })
+            else:  # Anthropic
+                new_message_content.append({
+                    "type": "tool_use",
+                    "id": func_call["id"],
+                    "name": func_call["name"],
+                    "input": func_call["arguments"]
+                })
+
+        if function_call_model == "anthropic" and new_message_content:
+            messages.append({
+                "role": "assistant",
+                "content": new_message_content
+            })
+
+        for func_call, result in zip(function_calls, function_results):
+            if function_call_model == "openai":
+                messages.append({
                     "role": "function",
-                    "name": function_name,
-                    "content": json.dumps(results)
-                }
-            ]
-        else:  # Anthropic
-            messages += [
-                {
-                    "role": "assistant",
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "id": tool_use_id,
-                            "name": function_name,
-                            "input": arguments
-                        }
-                    ]
-                },
-                {
+                    "name": func_call["name"],
+                    "content": result["result"]
+                })
+            else:  # Anthropic
+                messages.append({
                     "role": "user",
                     "content": [
                         {
                             "type": "tool_result",
-                            "tool_use_id": tool_use_id,
-                            "content": json.dumps(results)
+                            "tool_use_id": func_call["id"],
+                            "content": result["result"]
                         }
                     ]
-                }
-            ]
+                })
 
-        function_call_count += 1
+        function_call_count += len(function_calls)
 
     # Formulate final response using the tool results
     if function_call_model == "openai":
@@ -243,8 +270,12 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         if not final_response:
             return False, {"error": "Failed to get a final response from Anthropic"}
         
-        text_content = next((item.text for item in final_response.content if item.type == 'text'), None)
-        if text_content is None:
-            return False, {"error": "No text content in Anthropic response"}
+        final_text_content = ""
+        for content_item in final_response.content:
+            if isinstance(content_item, TextBlock):
+                final_text_content += content_item.text
         
-        return True, {"response": text_content}
+        if not final_text_content:
+            return False, {"error": "No text content in Anthropic final response"}
+        
+        return True, {"response": final_text_content.strip()}

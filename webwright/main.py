@@ -23,6 +23,8 @@ from pygments.formatters import TerminalFormatter
 
 from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key
 from lib.util import get_username
+from lib.util import format_response
+
 from halo import Halo
 
 try:
@@ -75,10 +77,20 @@ session = PromptSession(history=history, key_bindings=bindings)
 custom_style = Style.from_dict({
     'code': '#ansiyellow',
     'header': '#ansigreen bold',
+    'thinking': '#ansiblue bold',
     'bold': 'bold',
     'inline-code': '#ansicyan',
     'error': '#ff8c00',  # Add this line for orange error messages
+    'math': '#ansimagenta',  # Add this line for magenta math expressions
+    'emoji': '#ansibrightmagenta'  # Add this line for emoji support
 })
+
+# Ensure UTF-8 encoding
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
+
+async def print_with_emoji(text):
+    print_formatted_text(FormattedText([('class:emoji', text)]), style=custom_style)
 
 async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, function_call_model):
     try:
@@ -119,56 +131,6 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
         logging.error(traceback.format_exc())
         return False, {"error": error_message}
 
-def format_response(response):
-    if response is None:
-        return FormattedText([('class:error', "No response to format.\n")])
-    
-    formatted_text = []
-    lines = response.split('\n')
-    in_code_block = False
-    code_lines = []
-
-    for line in lines:
-        if line.startswith('```'):
-            if in_code_block:
-                # End of code block
-                in_code_block = False
-                formatted_text.append(('class:code', ''.join(code_lines)))
-                code_lines = []
-            else:
-                # Start of code block
-                in_code_block = True
-            continue
-
-        if in_code_block:
-            code_lines.append(line + '\n')
-        else:
-            # Handle headers
-            if line.startswith('#'):
-                level = len(line.split()[0])
-                formatted_text.append(('class:header', line[level:].strip() + '\n'))
-            # Handle bold text
-            elif '**' in line:
-                parts = line.split('**')
-                for i, part in enumerate(parts):
-                    if i % 2 == 0:
-                        formatted_text.append(('', part))
-                    else:
-                        formatted_text.append(('class:bold', part))
-                formatted_text.append(('', '\n'))
-            # Handle inline code
-            elif '`' in line:
-                parts = line.split('`')
-                for i, part in enumerate(parts):
-                    if i % 2 == 0:
-                        formatted_text.append(('', part))
-                    else:
-                        formatted_text.append(('class:inline-code', part))
-                formatted_text.append(('', '\n'))
-            else:
-                formatted_text.append(('', line + '\n'))
-
-    return FormattedText(formatted_text)
 
 async def main():
     openai_token = get_openai_api_key()
@@ -182,6 +144,7 @@ async def main():
         set_anthropic_api_key(anthropic_token)
 
     
+    function_call_model = "anthropic"
     function_call_model = "openai"
 
     if not function_call_model:
@@ -198,7 +161,7 @@ async def main():
     conversation_history = []  # Initialize conversation history
     
     while True:
-        logging.info(f"Conversation history: {conversation_history}")
+        # logging.info(f"Conversation history: {conversation_history}")
         try:
             question = await session.prompt_async(f"{username}[{function_call_model}]> ")
             # Check if the question is empty (user just hit enter)
@@ -210,7 +173,7 @@ async def main():
                 sys.exit()
             
             conversation_history.append({"role": "user", "content": question})
-            logging.info(f"Main: Added user message to history. Current history: {conversation_history}")
+            # logging.info(f"Main: Added user message to history. Current history: {conversation_history}")
             
             success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, function_call_model)
             
@@ -218,7 +181,7 @@ async def main():
                 formatted_response = format_response(results['explanation'])
                 print_formatted_text(formatted_response, style=custom_style)
                 conversation_history.append({"role": "assistant", "content": results["explanation"]})
-                logging.info(f"Main: Added assistant response to history. Current history: {conversation_history}")
+                # logging.info(f"Main: Added assistant response to history. Current history: {conversation_history}")
             elif not success and "error" in results:
                 # Error messages are now handled in process_shell_query, so we don't need to print them here
                 pass
@@ -232,10 +195,8 @@ async def main():
 
 def entry_point():
     try:
-        print("starting")
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("system> Exiting gracefully...")
         # Cancel all running tasks
         tasks = [task for task in asyncio.all_tasks() if not task.done()]
         for task in tasks:
@@ -253,5 +214,4 @@ def entry_point():
         print("system> Shutdown complete.")
 
 if __name__ == "__main__":
-    print("main entry")
     entry_point()
