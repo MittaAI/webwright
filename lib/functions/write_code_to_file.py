@@ -7,6 +7,9 @@ def write_code_to_file(file_path: str, code: str) -> dict:
     """
     Writes code to a specified file.
     If the file_path is just a file name, it defaults to the current directory.
+    You can use matplot to do graphs, but they should be run with run_python_file_non_blocking
+    If you write code, you should offer to show it. If it's short, you can show it before asking.
+    
     :param file_path: The path of the file to write the code to.
     :type file_path: str
     :param code: The code to write to the file.

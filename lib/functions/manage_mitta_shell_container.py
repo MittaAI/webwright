@@ -9,7 +9,8 @@ from lib.function_wrapper import function_info_decorator
 logger = setup_logging()
 
 # This decorator registers the function into a wider package
-@function_info_decorator
+# @function_info_decorator
+# DISABLED
 def manage_mitta_shell_container(action: str) -> dict:
     """
     Allows the local Mitta agent to manage a Docker container for a development web shell and containers for applications the shell and the user build, allowing the agent to start, stop, restart, and recreate container actions.

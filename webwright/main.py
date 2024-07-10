@@ -1,10 +1,7 @@
 import os
 import sys
-import logging
-import pprint
 import json
-import time
-import random
+
 import traceback
 import asyncio
 
@@ -16,14 +13,12 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.clipboard import ClipboardData
 from prompt_toolkit.styles import Style
-
-from pygments import highlight
-from pygments.lexers import PythonLexer
-from pygments.formatters import TerminalFormatter
+from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
 
 from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key
 from lib.util import get_username
 from lib.util import format_response
+from lib.util import setup_logging, get_logger
 
 from halo import Halo
 
@@ -51,9 +46,7 @@ webwright_dir = os.path.expanduser('~/.webwright')
 os.makedirs(webwright_dir, exist_ok=True)
 
 # Setup logging
-log_dir = os.path.join(webwright_dir, 'logs')
-os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = get_logger()
 
 # User
 username = get_username()
@@ -70,7 +63,7 @@ def _(event):
         event.current_buffer.insert_text(clipboard_data.text)
 
 # Build history and session
-history_file = os.path.join(webwright_dir, '.webwright_history')
+history_file = os.path.join(webwright_dir, 'webwright_history')
 history = FileHistory(history_file)
 session = PromptSession(history=history, key_bindings=bindings)
 
@@ -82,21 +75,36 @@ custom_style = Style.from_dict({
     'inline-code': '#ansicyan',
     'error': '#ff8c00',  # Add this line for orange error messages
     'math': '#ansimagenta',  # Add this line for magenta math expressions
-    'emoji': '#ansibrightmagenta'  # Add this line for emoji support
+    'emoji': '#ansibrightmagenta',  # Add this line for emoji support
+    'username': '#ansigreen bold',
+    'model': '#ansiyellow bold',
+    'path': '#add8e6'
 })
 
-# Ensure UTF-8 encoding
-sys.stdout.reconfigure(encoding='utf-8')
-sys.stderr.reconfigure(encoding='utf-8')
+def custom_exception_handler(loop, context):
+    # Extract the exception
+    exception = context.get("exception")
+    
+    if exception:
+        logger.error(f"Caught exception: {exception}")
+    else:
+        logger.error(f"Caught error: {context['message']}")
 
-async def print_with_emoji(text):
-    print_formatted_text(FormattedText([('class:emoji', text)]), style=custom_style)
+    # Log the exception and prevent the program from crashing
+    print(f"Unhandled exception: {exception}")
+    print("Press ENTER to continue...")
+
+    # Optionally: Handle specific exceptions
+    if isinstance(exception, OSError) and exception.winerror == 10038:
+        print("Handled WinError 10038")
+    else:
+        loop.default_exception_handler(context)
 
 async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, function_call_model):
     try:
         success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, function_call_model=function_call_model, history=conversation_history)
         
-        logging.debug(f"AI response: {results}")
+        logger.debug(f"AI response: {results}")
 
         if success:
             if "response" in results and results["response"] is not None:
@@ -119,7 +127,7 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
             if "error" in results:
                 error_message = results["error"]
                 print_formatted_text(FormattedText([('class:error', f"system> Error: {error_message}")]), style=custom_style)
-                logging.error(f"Error: {error_message}")
+                logger.error(f"Error: {error_message}")
             else:
                 error_message = "An unknown error occurred."
                 print_formatted_text(FormattedText([('class:error', f"system> Error: {error_message}")]), style=custom_style)
@@ -127,43 +135,27 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
     except Exception as e:
         error_message = f"Error: {str(e)}"
         print_formatted_text(FormattedText([('class:error', f"system> {error_message}")]), style=custom_style)
-        logging.error(error_message)
-        logging.error(traceback.format_exc())
+        logger.error(error_message)
+        logger.error(traceback.format_exc())
         return False, {"error": error_message}
 
 
-async def main():
-    openai_token = get_openai_api_key()
-    if not openai_token:
-        openai_token = input("Please enter your OpenAI API key: ")
-        set_openai_api_key(openai_token)
-        
-    anthropic_token = get_anthropic_api_key()
-    if not anthropic_token:
-        anthropic_token = input("Please enter your Anthropic API key: ")
-        set_anthropic_api_key(anthropic_token)
-
-    
-    function_call_model = "anthropic"
-    function_call_model = "openai"
-
-    if not function_call_model:
-        function_call_model = input("Choose function call model (openai/anthropic): ").lower()
-
-        while function_call_model not in ["openai", "anthropic"]:
-            function_call_model = input("Invalid choice. Please enter 'openai' or 'anthropic': ").lower()
-
-    setup_ssh_key()
-    
-    # Clear the screen
-    os.system('cls' if os.name == 'nt' else 'clear')
-    
+async def main(openai_token, anthropic_token, function_call_model="openai"):
     conversation_history = []  # Initialize conversation history
-    
+
     while True:
-        # logging.info(f"Conversation history: {conversation_history}")
+        # logger.info(f"Conversation history: {conversation_history}")
         try:
-            question = await session.prompt_async(f"{username}[{function_call_model}]> ")
+            current_path = os.getcwd().replace(os.path.expanduser('~'), '~')
+            
+            prompt_text = [
+                ('class:username', f"{username}@"),
+                ('class:model', f"{function_call_model} "),
+                ('class:path', f"{current_path} $ ")
+            ]
+
+            question = await session.prompt_async(FormattedText(prompt_text), style=custom_style)
+
             # Check if the question is empty (user just hit enter)
             if question.strip() == "":
                 continue
@@ -173,7 +165,7 @@ async def main():
                 sys.exit()
             
             conversation_history.append({"role": "user", "content": question})
-            # logging.info(f"Main: Added user message to history. Current history: {conversation_history}")
+            # logger.info(f"Main: Added user message to history. Current history: {conversation_history}")
             
             success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, function_call_model)
             
@@ -181,7 +173,7 @@ async def main():
                 formatted_response = format_response(results['explanation'])
                 print_formatted_text(formatted_response, style=custom_style)
                 conversation_history.append({"role": "assistant", "content": results["explanation"]})
-                # logging.info(f"Main: Added assistant response to history. Current history: {conversation_history}")
+                # logger.info(f"Main: Added assistant response to history. Current history: {conversation_history}")
             elif not success and "error" in results:
                 # Error messages are now handled in process_shell_query, so we don't need to print them here
                 pass
@@ -190,27 +182,58 @@ async def main():
 
         except Exception as e:
             print_formatted_text(FormattedText([('class:error', f"system> Error: {str(e)}")]), style=custom_style)
-            logging.error(f"Error: {str(e)}")
-            logging.error(traceback.format_exc())
+            logger.error(f"Error: {str(e)}")
+            logger.error(traceback.format_exc())
+
 
 def entry_point():
+    # Get configs
+    openai_token = get_openai_api_key()
+    anthropic_token = get_anthropic_api_key()
+    setup_ssh_key()
+
+    # Clear the screen
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+    function_call_model = None
+    result = radiolist_dialog(
+        title="Choose Function Call Model",
+        text="Select the function call model you want to use:",
+        values=[
+            ("openai", "OpenAI"),
+            ("anthropic", "Anthropic"),
+        ],
+    ).run()
+
+    if result is not None:
+        function_call_model = result
+    else:
+        print("system> No model to use.")
+        sys.exit()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    # Set the custom exception handler
+    loop.set_exception_handler(custom_exception_handler)
+
     try:
-        asyncio.run(main())
+        loop.run_until_complete(main(openai_token=openai_token, anthropic_token=anthropic_token, function_call_model=function_call_model))
+
     except KeyboardInterrupt:
-        # Cancel all running tasks
-        tasks = [task for task in asyncio.all_tasks() if not task.done()]
+        print("system> KeyboardInterrupt received, cancelling tasks...")
+        tasks = [task for task in asyncio.all_tasks(loop) if not task.done()]
         for task in tasks:
             task.cancel()
-        # Ensure the event loop is closed
-        loop = asyncio.get_event_loop()
-        if not loop is None and not loop.is_closed():
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.close()
+        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+        loop.run_until_complete(loop.shutdown_asyncgens())
     except Exception as e:
         print(f"system> Error during shutdown: {str(e)}")
-        logging.error(f"Error during shutdown: {str(e)}")
-        logging.error(traceback.format_exc())
+        logger.error(f"Error during shutdown: {str(e)}")
+        logger.error(traceback.format_exc())
     finally:
+        print("system> Closing event loop.")
+        loop.close()
         print("system> Shutdown complete.")
 
 if __name__ == "__main__":

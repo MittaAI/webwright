@@ -29,31 +29,68 @@ def find_chrome_executable() -> str:
 
     return ""
 
+def find_edge_executable() -> str:
+    # Common installation paths for Edge
+    common_paths = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Users\%USERNAME%\AppData\Local\Microsoft\Edge SxS\Application\msedge.exe"
+    ]
+
+    # Check common paths first
+    for path in common_paths:
+        normalized_path = os.path.expandvars(path)
+        if os.path.exists(normalized_path):
+            return normalized_path
+
+    # If Edge wasn't found in common paths, search typical directories
+    search_dirs = [
+        r"C:\Program Files",
+        r"C:\Program Files (x86)"
+    ]
+    
+    for dir in search_dirs:
+        for root, _, files in os.walk(dir):
+            if 'msedge.exe' in files:
+                return os.path.join(root, 'msedge.exe')
+
+    return ""
+
 @function_info_decorator
 def browser(url: str) -> dict:
     """
     Opens Google Chrome to a specified URL on Windows.
-    :param url: The URL to open in Chrome.
+    Falls back to Microsoft Edge if Chrome is not found.
+    Other functions may mention this function can be used to open a URL they provide.
+    :param url: The URL to open.
     :type url: str
     :return: A dictionary containing the success status and any relevant messages.
     :rtype: dict
     """
     chrome_path = find_chrome_executable()
-    
+
+    # If Chrome is not found, try to find Edge
     if not chrome_path:
-        return {
-            "success": False,
-            "message": "Chrome executable not found. Please make sure Chrome is installed."
-        }
+        edge_path = find_edge_executable()
+        if not edge_path:
+            return {
+                "success": False,
+                "message": "Neither Chrome nor Edge executables were found. Please make sure either Chrome or Edge is installed."
+            }
+        browser_path = edge_path
+        browser_name = "Edge"
+    else:
+        browser_path = chrome_path
+        browser_name = "Chrome"
     
     try:
-        subprocess.Popen([chrome_path, url])
+        subprocess.Popen([browser_path, url])
         return {
             "success": True,
-            "message": f"Chrome opened successfully with URL: {url}"
+            "message": f"{browser_name} opened successfully with URL: {url}"
         }
     except Exception as e:
         return {
             "success": False,
-            "message": f"An error occurred while trying to open Chrome: {str(e)}"
+            "message": f"An error occurred while trying to open {browser_name}: {str(e)}"
         }

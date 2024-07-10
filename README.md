@@ -1,80 +1,72 @@
-# Webwright: Web Automation Done Right 🚀
+# Webwright: Seamlessly Automate Your Web Development
 
-## Overview
-Webwright provides a simple command line interface, Docker integration for local development, simple templates for starting out, and interactive diffs and commits to create a new site/app quickly. It is similar to GPT-Engineer and Aider but focused on web only.
+Webwright is your go-to tool for web automation, streamlining your development process with a powerful command line interface, Docker support, and intuitive templates. Think of it as your coding buddy, but laser-focused on web automation!
+
+## Features & Benefits
 
 ### Local Setup:
 
-#### Download and Install:
-- Users clone the repository and install via pip:
-  ```
-  pip install webwright
-  ```
-- Provides command line tools for quick website setup.
-- Includes example website templates.
+#### Install in a Snap:
+Clone the repo and get started with:
+```sh
+pip install -e .
+```
 
 ### GitHub Integration:
 
-#### Commit and Integrate:
-- Code committed to GitHub.
-- Integration with Google Cloud Run allows AI automation.
+#### Effortless Version Control:
+Commit your code to GitHub with built-in tools, and leverage Google Cloud Run for AI-driven automation.
 
 ### Admin Interface:
 
-#### Update Website:
-- Admin interface for code updates.
-- Users can update the site via conversational commands.
-- Eliminates the need for a support or creation team for updates.
+#### Conversational Updates:
+Easily update your site through a conversational command interface, cutting out the need for a traditional support team.
 
-### Command Line Tools:
+### Command Line Efficiency:
 
-#### Quick Creation and Deployment:
-- Tools for website creation agencies to quickly create and deploy sites for review.
+#### Rapid Deployment:
+Ideal for agencies, our CLI allows for the quick creation and deployment of websites for client reviews.
 
 ### GitHub Storage:
 
-#### Store Sites:
-- Sites are committed to GitHub, typically stored on the agency’s account.
+#### Secure Storage:
+All site data is securely committed to the agency's GitHub account.
 
 ### Google Cloud Run Hosting:
 
-#### Host the Site:
-- Sites are hosted using Google Cloud Run on the agency’s Google Cloud account.
+#### Scalable Hosting:
+Deploy your sites effortlessly using Google Cloud Run, managed via the agency's Google Cloud account.
 
 ### Code Chaining:
 
-#### Sequential Execution:
-- Allows one step to run another step, creating a chain of commands for automation.
+#### Seamless Automation:
+Chain multiple commands for complex automation tasks, making your workflow smoother than ever.
 
 ### Function Tools Integration:
 
-#### AI-Assisted Code Writing:
-- Uses OpenAI, Claude, and other models to write and run code, including OpenAI execution calls.
+#### AI-Assisted Development:
+Harness the power of OpenAI, Claude, and other models to write and execute code in minutes.
 
 ### Local Indexing:
 
-#### Search and Comparison:
-- Locally index the codebase.
-- Use a simple search engine and vector comparisons for indexing and retrieval.
+#### Powerful Search:
+Index your code locally and perform searches and vector comparisons with ease.
 
 ### User Control:
 
-#### Enhanced Control:
-- Functions similarly to autoGPT but with enhanced user control.
-- Focused on websites/webapps.
+#### Enhanced User Control:
+Similar to autoGPT, but with a focus on giving users greater control, specifically for web applications.
 
 ## Getting Started
 
-### Step-by-Step Instructions:
+### Step-by-Step Setup:
 
-#### Clone the Repository:
-
+#### 1. Clone the Repository:
+```sh
+git clone git@github.com:MittaAI/webwright.git
 ```
-git clone git@github.com:youragency/your-repo.git
-```
 
-#### Install Webwright:
-
-```
-pip install webwright
+#### 2. Install Webwright:
+```sh
+pip install -e .
 ```
