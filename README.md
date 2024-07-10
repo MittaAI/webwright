@@ -34,7 +34,8 @@ Webwright requires Anaconda and Docker to be configured on your system.
    ```
 
 2. **Set up dependencies**
-   Webwright requires Anaconda and Docker to be configured on your system.
+
+  Webwright requires Anaconda and Docker to be configured on your system.
   - [Anaconda/Miniconda Installation](https://docs.anaconda.com/miniconda/miniconda-install/)
   - [Docker Desktop Installation](https://www.docker.com/products/docker-desktop/)
 
