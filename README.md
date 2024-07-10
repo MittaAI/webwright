@@ -4,7 +4,7 @@
 
 Welcome to Webwright, a powerful AI-driven terminal shell designed to streamline the process of building, deploying, and managing websites. It's not just a web development tool; it's an AI assistant for your computer, a ghost in the machine that can handle a variety of tasks, from opening URLs in your browser to committing code to GitHub, writing scripts, starting Docker containers, and much more.
 
-![Webwright Logo](https://raw.githubusercontent.com/MittaAI/webwright/main/logo.png)
+![Webwright Logo](https://raw.githubusercontent.com/MittaAI/webwright/main/logo.png | width=200)
 
 ## Key Features
 
