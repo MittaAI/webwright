@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/MittaAI/webwright/main/logo.png" width="200" alt="Webwright Logo">
 </div>
 
-# Webwright: The Ghost in Your Machine 👻💻
+# Webwright: The Ghost in Your Shell 👻💻
 
 Webwright is an AI-driven terminal shell designed to streamline the process of building, deploying, and managing websites.
 
