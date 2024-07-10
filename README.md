@@ -187,3 +187,7 @@ Webwright is open-source software licensed under the [MIT License](https://opens
 ---
 
 With Webwright, harness the power of AI to enhance your development workflow and make building and managing websites easier and more efficient than ever before. Try it today and experience the future of web development!
+
+---
+
+© Mitta Corp. All rights reserved 2024.
