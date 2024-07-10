@@ -26,7 +26,7 @@ pip install webwright
 
 Webwright requires Anaconda and Docker to be configured on your system. Follow the links below for installation instructions:
 
-- [Anaconda Installation](https://www.anaconda.com/products/distribution#download-section)
+- [Anaconda/Miniconda Installation](https://docs.anaconda.com/miniconda/miniconda-install/)
 - [Docker Desktop Installation](https://www.docker.com/products/docker-desktop/)
 
 ## Getting Started
