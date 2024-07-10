@@ -6,6 +6,15 @@
 
 Webwright is an AI-driven terminal shell designed to streamline the process of building, deploying, and managing websites.
 
+## 🔑 API Requirements
+
+Webwright requires an API token from either OpenAI or Anthropic to function. You can obtain these tokens from:
+
+- [OpenAI API Keys](https://platform.openai.com/account/api-keys)
+- [Anthropic API Keys](https://www.anthropic.com/) or [Anthropic Console](https://console.anthropic.com/)
+
+Please ensure you have at least one of these API keys before proceeding with the installation.
+
 ## 🚀 Key Features
 
 - 🌐 **AI-Powered Web Development**: Craft and launch websites with intelligent, AI-driven tools.
