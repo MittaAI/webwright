@@ -1,10 +1,39 @@
+<div align="center">
+  <img src="https://raw.githubusercontent.com/MittaAI/webwright/main/logo.png" width="200" alt="Webwright Logo">
+</div>
+
 # Webwright
 
 **A Terminal Shell for Building and Deploying Websites Using AI**
 
-Welcome to Webwright, a powerful AI-driven terminal shell designed to streamline the process of building, deploying, and managing websites. It's not just a web development tool; it's an AI assistant for your computer, a ghost in the machine that can handle a variety of tasks, from opening URLs in your browser to committing code to GitHub, writing scripts, starting Docker containers, and much more.
+Webwright is an AI-driven terminal shell designed to streamline the process of building, deploying, and managing websites.
 
-<img src="https://raw.githubusercontent.com/MittaAI/webwright/main/logo.png" width="200" alt="Webwright Logo">
+It's not just a web development tool; it's an AI assistant for your computer, a ghost in the machine that can handle a variety of tasks, from opening URLs in your browser to committing code to GitHub, writing scripts, starting Docker containers, and much more.
+
+## System Flow Diagram
+
+```mermaid
+graph TD
+    A[User] -->|Enters command| B[Webwright Shell]
+    B -->|Processes command| C{Function or AI?}
+    C -->|Function| D[Execute Local Function]
+    C -->|AI Request| E{OpenAI or Anthropic?}
+    E -->|OpenAI| F[OpenAI API]
+    E -->|Anthropic| G[Anthropic API]
+    F -->|Response| H[Process AI Response]
+    G -->|Response| H
+    H -->|Generate Code/App| I[Code/Application Output]
+    H -->|Execute Function| J[Function Execution]
+    J -->|Result| K[Process Function Result]
+    K -->|Update Context| B
+    I -->|Display to User| A
+    D -->|Result| K
+    B -->|Store/Retrieve Data| L[(Vector Store)]
+    B -->|Store/Retrieve Data| M[(Set Store)]
+```
+
+This diagram illustrates the flow of Webwright's functionality, showing how user commands are processed, how AI requests are handled, and how data is stored and retrieved.
+
 
 ## Key Features
 
