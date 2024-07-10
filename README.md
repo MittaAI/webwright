@@ -11,7 +11,7 @@ Webwright is an AI-driven terminal shell designed to streamline the process of b
 Webwright requires an API token from either OpenAI or Anthropic to function. You can obtain these tokens from:
 
 - [OpenAI API Keys](https://platform.openai.com/account/api-keys)
-- [Anthropic API Keys](https://www.anthropic.com/) or [Anthropic Console](https://console.anthropic.com/)
+- [Anthropic API Keys](https://console.anthropic.com/settings/keys)
 
 Please ensure you have at least one of these API keys before proceeding with the installation.
 
