@@ -6,31 +6,6 @@
 
 Webwright is an AI-driven terminal shell designed to streamline the process of building, deploying, and managing websites.
 
-## 🔄 System Flow Diagram
-
-```mermaid
-graph TD
-    A[User] -->|Enters command| B[Webwright Shell]
-    B -->|Processes command| C{Function or AI?}
-    C -->|Function| D[Execute Local Function]
-    C -->|AI Request| E{OpenAI or Anthropic?}
-    E -->|OpenAI| F[OpenAI API]
-    E -->|Anthropic| G[Anthropic API]
-    F -->|Response| H[Process AI Response]
-    G -->|Response| H
-    H -->|Generate Code/App| I[Code/Application Output]
-    H -->|Execute Function| J[Function Execution]
-    J -->|Result| K[Process Function Result]
-    K -->|Update Context| B
-    I -->|Display to User| A
-    D -->|Result| K
-    B -->|Store/Retrieve Data| L[(Vector Store)]
-    B -->|Store/Retrieve Data| M[(Set Store)]
-```
-
-This diagram illustrates the flow of Webwright's functionality, showing how user commands are processed, how AI requests are handled, and how data is stored and retrieved.
-
-
 ## 🚀 Key Features
 
 - 🌐 **AI-Powered Web Development**: Craft and launch websites with intelligent, AI-driven tools.
@@ -70,6 +45,30 @@ Webwright requires Anaconda and Docker to be configured on your system.
    ```bash
    webwright
    ```
+
+## 🔄 System Flow Diagram
+
+```mermaid
+graph TD
+    A[User] -->|Enters command| B[Webwright Shell]
+    B -->|Processes command| C{Function or AI?}
+    C -->|Function| D[Execute Local Function]
+    C -->|AI Request| E{OpenAI or Anthropic?}
+    E -->|OpenAI| F[OpenAI API]
+    E -->|Anthropic| G[Anthropic API]
+    F -->|Response| H[Process AI Response]
+    G -->|Response| H
+    H -->|Generate Code/App| I[Code/Application Output]
+    H -->|Execute Function| J[Function Execution]
+    J -->|Result| K[Process Function Result]
+    K -->|Update Context| B
+    I -->|Display to User| A
+    D -->|Result| K
+    B -->|Store/Retrieve Data| L[(Vector Store)]
+    B -->|Store/Retrieve Data| M[(Set Store)]
+```
+
+This diagram illustrates the flow of Webwright's functionality, showing how user commands are processed, how AI requests are handled, and how data is stored and retrieved.
 
 ## Getting Started
 
