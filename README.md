@@ -26,7 +26,7 @@ Please ensure you have at least one of these API keys before proceeding with the
 - 🔧 **Infinitely Extensible**: Customize your shell with bespoke commands and scripts.
 
 ## Demo
-![Animated GIF](https://raw.githubusercontent.com/MittaAI/webwright/main/output.gif)
+![Animated GIF](https://github.com/MittaAI/webwright/blob/main/video.gif?raw=true)
 
 ## 🛠️ Installation
 Webwright requires Anaconda and Docker to be configured on your system.
