@@ -31,7 +31,7 @@ Please ensure you have at least one of these API keys before proceeding with the
 ## 🛠️ Installation
 Webwright requires Anaconda and Docker to be configured on your system.
 
-1. **Install Webwright**
+1. **Install Webwright** (coming soon)
    ```bash
    pip install webwright
    ```
