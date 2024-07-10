@@ -31,6 +31,8 @@ from git import Repo
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
+SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps. Provide the user with an overview of your steps, then call the necessary functions. If executing a series of 3 or more functions, or modifying files please ask the user for confirmation before executing."
+
 # Execute function by name
 async def execute_function_by_name(function_name, **kwargs):
     logging.info(f"calling {function_name}")
@@ -120,11 +122,16 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
     # Ensure the upload directory and the username directory under that exist
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
-    
+
     if history is None:
         history = []
 
     messages = history
+
+    messages.append({
+        "role": "system",
+        "content": SYSTEM_PROMPT
+    })
 
     max_function_calls = 6
     function_call_count = 0
