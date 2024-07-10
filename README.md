@@ -2,15 +2,11 @@
   <img src="https://raw.githubusercontent.com/MittaAI/webwright/main/logo.png" width="200" alt="Webwright Logo">
 </div>
 
-# Webwright
-
-**A Terminal Shell for Building and Deploying Websites Using AI**
+# Webwright: The Ghost in Your Machine 👻💻
 
 Webwright is an AI-driven terminal shell designed to streamline the process of building, deploying, and managing websites.
 
-It's not just a web development tool; it's an AI assistant for your computer, a ghost in the machine that can handle a variety of tasks, from opening URLs in your browser to committing code to GitHub, writing scripts, starting Docker containers, and much more.
-
-## System Flow Diagram
+## 🔄 System Flow Diagram
 
 ```mermaid
 graph TD
@@ -35,28 +31,45 @@ graph TD
 This diagram illustrates the flow of Webwright's functionality, showing how user commands are processed, how AI requests are handled, and how data is stored and retrieved.
 
 
-## Key Features
+## 🚀 Key Features
 
-- **Website Development**: Build and deploy websites using AI-driven tools.
-- **Code Generation**: Automatically generate code for your projects.
-- **Project Management**: Create and manage projects effortlessly.
-- **Version Control**: Commit code to GitHub directly from the terminal.
-- **Docker Integration**: Start and manage Docker containers.
-- **Browser Automation**: Open URLs and automate browser tasks.
-- **Extensible Shell**: A versatile shell that can be extended with custom commands and scripts.
+- 🌐 **AI-Powered Web Development**: Craft and launch websites with intelligent, AI-driven tools.
+- 💻 **Smart Code Generation**: Let AI write code for you, boosting productivity and innovation.
+- 📊 **Effortless Project Management**: Seamlessly create and oversee projects with AI assistance.
+- 🔄 **Integrated Version Control**: Push your code to GitHub without leaving the terminal.
+- 🐳 **Docker at Your Fingertips**: Effortlessly spin up and manage Docker containers.
+- 🌐 **Browser Magic**: Automate web tasks and open URLs (or other apps) with simple commands.
+- 🔧 **Infinitely Extensible**: Customize your shell with bespoke commands and scripts.
 
-## Installation
+## 🛠️ Installation
+Webwright requires Anaconda and Docker to be configured on your system.
 
-You can install Webwright using `pip`:
+1. **Install Webwright**
+   ```bash
+   pip install webwright
+   ```
 
-```bash
-pip install webwright
-```
+2. **Set up dependencies**
+   Webwright requires Anaconda and Docker to be configured on your system.
+  - [Anaconda/Miniconda Installation](https://docs.anaconda.com/miniconda/miniconda-install/)
+  - [Docker Desktop Installation](https://www.docker.com/products/docker-desktop/)
 
-Webwright requires Anaconda and Docker to be configured on your system. Follow the links below for installation instructions:
+3. **Create and activate a Conda environment**
+   ```bash
+   conda create -n webwright python=3.10
+   conda activate webwright
+   ```
 
-- [Anaconda/Miniconda Installation](https://docs.anaconda.com/miniconda/miniconda-install/)
-- [Docker Desktop Installation](https://www.docker.com/products/docker-desktop/)
+4. **Install Git**
+   Ensure Git is installed in your Conda environment:
+   ```bash
+   conda install git
+   ```
+
+5. **Start Webwright**
+   ```bash
+   webwright
+   ```
 
 ## Getting Started
 
