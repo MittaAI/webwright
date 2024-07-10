@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Function to compute the Mandelbrot set
+# function to compute the mandelbrot set
 def mandelbrot(c, max_iter):
     z = c
     for n in range(max_iter):
@@ -10,24 +10,25 @@ def mandelbrot(c, max_iter):
         z = z*z + c
     return max_iter
 
-# Generate the fractal
-def generate_fractal(size):
-    # Determine the plot boundaries
-    x_min, x_max = -2.5, 1.5
-    y_min, y_max = -2.0, 2.0
+# define the dimensions and resolution of the plot
+xmin, xmax, ymin, ymax = -2.0, 1.0, -1.5, 1.5
+width, height = 800, 800
+max_iter = 255
 
-    width, height = (size*100, size*100)  # Increase resolution by multiplying size by 100
-    x, y = np.linspace(x_min, x_max, width), np.linspace(y_min, y_max, height)
-    fractal = np.zeros((width, height))
+# create an array to store the fractal
+bitmap = np.zeros((height, width), dtype=np.uint8)
 
-    for i in range(width):
-        for j in range(height):
-            fractal[i, j] = mandelbrot(complex(x[i], y[j]), 256)
+# create the fractal
+for x in range(width):
+    for y in range(height):
+        real = xmin + (x / width) * (xmax - xmin)
+        imag = ymin + (y / height) * (ymax - ymin)
+        c = complex(real, imag)
+        color = mandelbrot(c, max_iter)
+        bitmap[y, x] = color
 
-    plt.imshow(fractal.T, extent=[x_min, x_max, y_min, y_max], cmap='hot')
-    plt.colorbar()
-    plt.title("Mandelbrot Fractal")
-    plt.show()
-
-# Generate a fractal of the given size
-generate_fractal(20)
+# plot the fractal
+plt.imshow(bitmap, extent=(xmin, xmax, ymin, ymax), cmap='hot')
+plt.colorbar()
+plt.title("Mandelbrot Fractal")
+plt.show()

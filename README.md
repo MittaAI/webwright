@@ -25,6 +25,9 @@ Please ensure you have at least one of these API keys before proceeding with the
 - 🌐 **Browser Magic**: Automate web tasks and open URLs (or other apps) with simple commands.
 - 🔧 **Infinitely Extensible**: Customize your shell with bespoke commands and scripts.
 
+## Demo
+![Animated GIF](https://raw.githubusercontent.com/MittaAI/webwright/main/output.gif)
+
 ## 🛠️ Installation
 Webwright requires Anaconda and Docker to be configured on your system.
 
