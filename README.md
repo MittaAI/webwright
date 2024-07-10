@@ -88,31 +88,31 @@ Once installed, you can start using Webwright by simply typing `webwright` in yo
 ### Open URLs in Your Browser
 
 ```bash
-rare-parrot@openai ~\code\mitta\webwright $ open hackernews
+open hackernews
 ```
 
 ### Create a New Project
 
 ```bash
-rare-parrot@openai ~\code\mitta\webwright $ create project my-project
+create project my-project
 ```
 
 ### Generate Code
 
 ```bash
-rare-parrot@openai ~\code\mitta\webwright $ generate code --type python --output my_script.py
+generate code --type python --output my_script.py
 ```
 
 ### Commit to GitHub
 
 ```bash
-rare-parrot@openai ~\code\mitta\webwright $ git commit -m "Initial commit"
+git commit -m "Initial commit"
 ```
 
 ### Start Docker Containers
 
 ```bash
-rare-parrot@openai ~\code\mitta\webwright $ docker start my-container
+docker start my-container
 ```
 
 ### AI-Powered Code Generation
@@ -120,7 +120,7 @@ rare-parrot@openai ~\code\mitta\webwright $ docker start my-container
 Webwright can generate complex code snippets using AI. For example, to generate an ASCII fractal:
 
 ```bash
-rare-parrot@openai ~\code\mitta\webwright $ generate fractal --size 20
+generate fractal --size 20
 ```
 
 ### Example: Fractal Generation
