@@ -31,7 +31,7 @@ from git import Repo
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
-SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps. Provide the user with an overview of your steps, then call the necessary functions. If executing a series of 3 or more functions, or modifying files please ask the user for confirmation before executing."
+SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps. Provide the user with an overview of your steps, then call the necessary functions. Try to accomplish the goals in as few function calls as possible. If executing a series of 3 or more functions, or modifying files please ask the user for confirmation before executing."
 
 # Execute function by name
 async def execute_function_by_name(function_name, **kwargs):

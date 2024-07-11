@@ -3,6 +3,7 @@ import inspect
 import os
 import importlib.util
 import logging
+import sys
 
 tools = []  # A registry to hold all decorated functions' info
 callable_registry = {}  # A registry to hold the functions themselves
@@ -105,20 +106,21 @@ def function_info_decorator(func):
     return wrapper
 
 def load_functions_from_directory(directory):
-    for filename in os.listdir(directory):
-        if filename.endswith(".py") and filename != "__init__.py":
-            module_name = filename[:-3]
-            module_path = os.path.join(directory, filename)
-            spec = importlib.util.spec_from_file_location(module_name, module_path)
-            module = importlib.util.module_from_spec(spec)
-            try:
-                spec.loader.exec_module(module)
-                for attr in dir(module):
-                    func = getattr(module, attr)
-                    if callable(func) and hasattr(func, 'function_info'):
-                        logging.info(f"Loaded function: {attr}")
-            except Exception as e:
-                logging.error(f"Failed to load module {module_name}: {e}")
+  for filename in os.listdir(directory):
+    if filename.endswith(".py") and filename != "__init__.py":
+      module_name = filename[:-3]
+      module_path = os.path.join(directory, filename)
+      spec = importlib.util.spec_from_file_location(module_name, module_path)
+      module = importlib.util.module_from_spec(spec)
+      try:
+        spec.loader.exec_module(module)
+        for attr in dir(module):
+          func = getattr(module, attr)
+          if callable(func) and hasattr(func, 'function_info'):
+            logging.info("test")
+            logging.info(f"Loaded function: {attr}")
+      except Exception as e:
+        logging.error(f"Failed to load module {module_name}: {e}")
 
 # Load all functions from the lib/functions directory
 functions_directory = os.path.join(os.path.dirname(__file__), 'functions')
