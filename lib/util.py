@@ -213,8 +213,41 @@ def set_openai_api_key(api_key):
 ###############################################################################
 #                               Anthropic Setup                               #
 ###############################################################################
-import anthropic
+###############################################################################
+#                                OpenAI Setup                                 #
+###############################################################################
+from openai import OpenAI
+def check_openai_token(openai_token):
+    client = OpenAI(api_key=openai_token)
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "Confirm the token is working."}],
+            max_tokens=5
+        )
+        print("OpenAI API token verified successfully.")
+        return True
+    except Exception as e:
+        print(f"Error verifying OpenAI API token: {str(e)}")
+        return False
+def get_openai_api_key():
+    openai_token = os.getenv("OPENAI_API_KEY") or get_config_value("config", "OPENAI_API_KEY")
+    while not openai_token:
+        openai_token = input("Please enter your OpenAI API key: ")
+        if check_openai_token(openai_token):
+            set_config_value("config", "OPENAI_API_KEY", openai_token)
+        else:
+            print("Invalid token. Please try again.")
+            openai_token = None
+    return openai_token
+    
+def set_openai_api_key(api_key):
+    set_config_value("config", "OPENAI_API_KEY", api_key)
 
+###############################################################################
+#                               Anthropic Setup                               #
+###############################################################################
+import anthropic
 def check_anthropic_token(anthropic_token):
     try:
         client = anthropic.Client(anthropic_token)
@@ -223,8 +256,8 @@ def check_anthropic_token(anthropic_token):
         return True
     except Exception as e:
         print(f"Error verifying Anthropic API token: {str(e)}")
+        raise e
         return False
-
 def get_anthropic_api_key():
     anthropic_token = os.getenv("ANTHROPIC_API_KEY") or get_config_value("config", "ANTHROPIC_API_KEY")
     while not anthropic_token:
@@ -235,10 +268,9 @@ def get_anthropic_api_key():
         if check_anthropic_token(anthropic_token):
             set_config_value("config", "ANTHROPIC_API_KEY", anthropic_token)
         else:
-            print("Invalid token. Please try again.")
-            anthropic_token = None
+            # Exit the program if the Anthropic token is invalid
+            exit(1)
     return anthropic_token
-
 
 def set_anthropic_api_key(api_key):
     set_config_value("config", "ANTHROPIC_API_KEY", api_key)
