@@ -1,4 +1,6 @@
 import os
+import sys
+
 import string
 import random
 from configparser import ConfigParser
@@ -8,7 +10,9 @@ from coolname import generate_slug
 
 import re
 from prompt_toolkit.formatted_text import FormattedText
-from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
+from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog, yes_no_dialog
+from prompt_toolkit.application import Application
+
 import logging
 
 # Ensure the .webwright directory exists
@@ -57,7 +61,7 @@ def write_config():
 def set_config_value(section, key, value):
     if not config.has_section(section):
         config.add_section(section)
-    config.set(section, key, value)
+    config.set(section, key, str(value))  # Convert value to string
     write_config()
 
 def get_config_value(section, key):
@@ -197,50 +201,22 @@ def check_openai_token(openai_token):
 
 def get_openai_api_key():
     openai_token = os.getenv("OPENAI_API_KEY") or get_config_value("config", "OPENAI_API_KEY")
-    while not openai_token:
-        openai_token = input("Please enter your OpenAI API key: ")
-        if check_openai_token(openai_token):
-            set_config_value("config", "OPENAI_API_KEY", openai_token)
-        else:
-            print("Invalid token. Please try again.")
-            openai_token = None
-    return openai_token
-
-def set_openai_api_key(api_key):
-    set_config_value("config", "OPENAI_API_KEY", api_key)
-
-
-###############################################################################
-#                               Anthropic Setup                               #
-###############################################################################
-###############################################################################
-#                                OpenAI Setup                                 #
-###############################################################################
-from openai import OpenAI
-def check_openai_token(openai_token):
-    client = OpenAI(api_key=openai_token)
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": "Confirm the token is working."}],
-            max_tokens=5
-        )
-        print("OpenAI API token verified successfully.")
-        return True
-    except Exception as e:
-        print(f"Error verifying OpenAI API token: {str(e)}")
-        return False
-def get_openai_api_key():
-    openai_token = os.getenv("OPENAI_API_KEY") or get_config_value("config", "OPENAI_API_KEY")
-    while not openai_token:
-        openai_token = input("Please enter your OpenAI API key: ")
-        if check_openai_token(openai_token):
-            set_config_value("config", "OPENAI_API_KEY", openai_token)
-        else:
-            print("Invalid token. Please try again.")
-            openai_token = None
-    return openai_token
+    if openai_token and check_openai_token(openai_token):
+        return openai_token
     
+    openai_token = input_dialog(
+        title="OpenAI API Key",
+        text="Enter your OpenAI API key (Ctrl-Shift-V to paste or Enter to skip):"
+    ).run()
+    
+    if openai_token:
+        if check_openai_token(openai_token):
+            set_config_value("config", "OPENAI_API_KEY", openai_token)
+            return openai_token
+        else:
+            print("Invalid OpenAI token. Skipping.")
+    return None
+
 def set_openai_api_key(api_key):
     set_config_value("config", "OPENAI_API_KEY", api_key)
 
@@ -248,32 +224,123 @@ def set_openai_api_key(api_key):
 #                               Anthropic Setup                               #
 ###############################################################################
 import anthropic
+
 def check_anthropic_token(anthropic_token):
     try:
-        client = anthropic.Client(anthropic_token)
-        response = client.call_endpoint("v1/completions", prompt="Confirm the token is working.", max_tokens=5)
-        print("Anthropic API token verified successfully.")
-        return True
+        client = anthropic.Anthropic(api_key=anthropic_token)
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20240620",
+            max_tokens=10,
+            temperature=0,
+            system="Respond with 'Token verified' if this message is received.",
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Verify token"
+                }
+            ]
+        )
+        if "Token verified" in message.content[0].text:
+            print("Anthropic API token verified successfully.")
+            return True
+        else:
+            print("Unexpected response from Anthropic API.")
+            return False
     except Exception as e:
         print(f"Error verifying Anthropic API token: {str(e)}")
-        raise e
         return False
+
 def get_anthropic_api_key():
     anthropic_token = os.getenv("ANTHROPIC_API_KEY") or get_config_value("config", "ANTHROPIC_API_KEY")
-    while not anthropic_token:
-        anthropic_token = input_dialog(
-            title="Anthropic API Key",
-            text="Please enter your Anthropic API key:"
-        ).run()
+    if anthropic_token and check_anthropic_token(anthropic_token):
+        return anthropic_token
+    
+    anthropic_token = input_dialog(
+        title="Anthropic API Key",
+        text="Enter your Anthropic API key (Ctrl-Shift-V to paste or Enter to skip):"
+    ).run()
+    
+    if anthropic_token:
         if check_anthropic_token(anthropic_token):
             set_config_value("config", "ANTHROPIC_API_KEY", anthropic_token)
+            return anthropic_token
         else:
-            # Exit the program if the Anthropic token is invalid
-            exit(1)
-    return anthropic_token
+            print("Invalid Anthropic token. Skipping.")
+    return None
+
 
 def set_anthropic_api_key(api_key):
     set_config_value("config", "ANTHROPIC_API_KEY", api_key)
+
+
+def determine_api_to_use():
+    preferred_api = get_config_value("config", "PREFERRED_API")
+    openai_token = get_openai_api_key()
+    anthropic_token = get_anthropic_api_key()
+    
+    # Check if the preferred API is set and its token is valid
+    if preferred_api == "openai" and openai_token:
+        print("Using preferred API: OpenAI")
+        return "openai", openai_token, None, "gpt-3.5-turbo"
+    elif preferred_api == "anthropic" and anthropic_token:
+        print("Using preferred API: Anthropic")
+        return "anthropic", None, anthropic_token, "claude-3-5-sonnet-20240620"
+    
+    # If preferred API is not set or its token is invalid, proceed with selection logic
+    if openai_token and anthropic_token:
+        try:
+            choice = radiolist_dialog(
+                title="Choose API",
+                text="Both OpenAI and Anthropic APIs are available. Which one would you like to use?",
+                values=[
+                    ("openai", "OpenAI"),
+                    ("anthropic", "Anthropic")
+                ]
+            ).run()
+            
+            if choice is None:  # User cancelled the dialog
+                print("API selection cancelled. Exiting program.")
+                return None, None, None, None
+            
+            set_config_value("config", "PREFERRED_API", str(choice))
+            function_call_model = "gpt-3.5-turbo" if choice == "openai" else "claude-3-5-sonnet-20240620"
+            return choice, openai_token, anthropic_token, function_call_model
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                # Restart the event loop
+                application = Application()
+                application.run()
+                return determine_api_to_use()  # Try again
+            else:
+                raise  # Re-raise if it's a different RuntimeError
+    elif openai_token:
+        print("Using OpenAI API")
+        set_config_value("config", "PREFERRED_API", "openai")
+        return "openai", openai_token, None, "gpt-3.5-turbo"
+    elif anthropic_token:
+        print("Using Anthropic API")
+        set_config_value("config", "PREFERRED_API", "anthropic")
+        return "anthropic", None, anthropic_token, "claude-3-5-sonnet-20240620"
+    else:
+        print("Error: Neither OpenAI nor Anthropic API key is set.")
+        try:
+            should_exit = yes_no_dialog(
+                title="Exit Program",
+                text="Can't proceed. Would you like to exit the program?"
+            ).run()
+            if should_exit:
+                return None, None, None, None
+            else:
+                return determine_api_to_use()  # Recursively call to try again
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                # Restart the event loop
+                application = Application()
+                application.run()
+                return determine_api_to_use()  # Try again
+            else:
+                raise  # Re-raise if it's a different RuntimeError  
+
 
 # Response formatting
 def format_response(response):
@@ -316,7 +383,7 @@ def format_response(response):
         
         if line.startswith('#'):
             level = len(line.split()[0])
-            formatted_text.append(('class:header', line[level:].trip() + '\n'))
+            formatted_text.append(('class:header', line[level:].strip() + '\n'))
             continue
         
         parts = re.split(r'(\*\*.*?\*\*|`.*?`|\\\(.*?\\\))', line)

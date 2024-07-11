@@ -108,17 +108,17 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
         raise
 
 
-async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", function_call_model="openai", upload_dir=UPLOAD_DIR, history=None):
+async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", api_to_use="openai", upload_dir=UPLOAD_DIR, history=None):
     # Ensure text_content is initialized
     text_content = ""
     
-    if function_call_model not in ["openai", "anthropic"]:
-        raise ValueError("function_call_model must be either 'openai' or 'anthropic'")
+    if api_to_use not in ["openai", "anthropic"]:
+        raise ValueError("api_to_use must be either 'openai' or 'anthropic'")
     
-    if function_call_model == "openai" and not openai_token:
-        raise ValueError("OpenAI token is required when function_call_model is 'openai'")
-    elif function_call_model == "anthropic" and not anthropic_token:
-        raise ValueError("Anthropic token is required when function_call_model is 'anthropic'")
+    if api_to_use == "openai" and not openai_token:
+        raise ValueError("OpenAI token is required when api_to_use is 'openai'")
+    elif api_to_use == "anthropic" and not anthropic_token:
+        raise ValueError("Anthropic token is required when api_to_use is 'anthropic'")
     
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
@@ -139,7 +139,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         spinner = Halo(text='Calling the model...', spinner='dots')
         spinner.start()
         
-        if function_call_model == "openai":
+        if api_to_use == "openai":
             chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
 
             if not chat_response:
@@ -214,7 +214,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             })
 
         for func_call in function_calls:
-            if function_call_model == "openai":
+            if api_to_use == "openai":
                 messages.append({
                     "role": "assistant",
                     "content": None,
@@ -231,14 +231,14 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
                     "input": func_call["arguments"]
                 })
 
-        if function_call_model == "anthropic" and new_message_content:
+        if api_to_use == "anthropic" and new_message_content:
             messages.append({
                 "role": "assistant",
                 "content": new_message_content
             })
 
         for func_call, result in zip(function_calls, function_results):
-            if function_call_model == "openai":
+            if api_to_use == "openai":
                 messages.append({
                     "role": "function",
                     "name": func_call["name"],
@@ -259,7 +259,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         function_call_count += len(function_calls)
 
     # Formulate final response using the tool results
-    if function_call_model == "openai":
+    if api_to_use == "openai":
         final_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from OpenAI"}

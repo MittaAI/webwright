@@ -8,6 +8,7 @@ def run_python_file(file_path: str) -> dict:
     """
     Runs a Python file and captures the output.
     If the file_path is just a file name, it defaults to the current directory.
+
     :param file_path: The path of the Python file to run.
     :type file_path: str
     :return: A dictionary indicating the success or failure of the operation, along with the captured output.

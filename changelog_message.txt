@@ -1,0 +1,18 @@
+Fix #22: Ensure lib directory is picked up in Python 3.10
+
+- Changed the way `sys.path` is set up for `lib` directory in `main.py`.
+- Updated ai function parameters and refactored the if statements to use `api_to_use` instead of `function_call_model`.
+- Added additional setup and configuration checks in `lib/util.py`.
+- Enhanced `git_commit_and_push` function to support branch creation and pull requests.
+- Updated README to reflect changes in setup instructions.
+
+Update README and various scripts
+
+- Changed Python version in README setup instructions from 3.10 to 3.8.
+- Added step to set GITHUB_TOKEN in README.
+- Updated AI function call model parameter to api_to_use.
+- Enhanced git commit and push to support branch creation and pull requests.
+- Improved run_python_file function documentation.
+- Added sys.append to main.py for path resolution.
+- Addressed utility and import improvements in lib/util.py.
+- Enhanced error messages and custom styles in main.py.

@@ -1,0 +1,47 @@
+# Changelog
+
+## 2024-07-11 17:44:09
+### Changes
+### Changelog
+
+#### Updated Files:
+- **README.md**
+  - Changed Conda environment creation command from Python 3.10 to Python 3.8.
+  - Added steps to set the `GITHUB_TOKEN` to the environment.
+  - Changed configuration for running Webwright from the source.
+
+- **lib/aifunc.py**
+  - Updated function argument from `function_call_model` to `api_to_use`.
+  - Ensured tokens for OpenAI and Anthropic are validated before usage.
+  - Improved error handling and messaging.
+
+- **lib/functions/git_commit_and_push.py**
+  - Added parameters to support branch creation and PR creation.
+  - Enhanced commit process to enable pushing specific branches.
+  - Integrated GitHub token handling for PR creation with PyGitHub.
+
+- **lib/functions/run_python_file.py**
+  - Minor refactor including adding spacing and comment adjustments for clarity.
+
+- **lib/util.py**
+  - Refactored API token validation for OpenAI and Anthropic.
+  - Combined configurations and token fetching to streamline setup.
+  - Added interactive dialogs for setting configuration values dynamically.
+  - Simplified Anthropic API interaction and validation flow.
+
+- **webwright/main.py**
+  - Integrated custom styles for formatted text.
+  - Improved exception handling and log management.
+  - Refactored initialization of API determinations and configurations.
+  - Enhanced user prompts and streamlined setup procedures.
+
+#### New Untracked Files:
+- `changelog_message.txt`
+- `clear_screen.py`
+- `lib/functions/clear_screen.py`
+- `lib/functions/git_status.py`
+- `lib/functions/set_api_config.py`
+
+#### Notes:
+- Ensured robust handling of external dependencies and environmental setups.
+- Improved overall code readability and maintainability through systematic refactorings.

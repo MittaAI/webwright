@@ -1,5 +1,7 @@
-import os
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json
 
 import traceback
@@ -18,25 +20,47 @@ from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
 from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key
 from lib.util import get_username
 from lib.util import format_response
+from lib.util import determine_api_to_use
 from lib.util import setup_logging, get_logger
 
 from halo import Halo
+
+# Styles
+custom_style = Style.from_dict({
+    'code': '#ansicyan',
+    'header': '#ansigreen bold',
+    'thinking': '#ansiblue italic',
+    'bold': 'bold',
+    'inline-code': '#ansiyellow',
+    'error': '#ansired bold',
+    'warning': '#ansiyellow',
+    'success': '#ansigreen',
+    'math': '#ansimagenta',
+    'emoji': '#ansibrightmagenta',
+    'username': '#ansigreen bold',
+    'model': '#ansiyellow bold',
+    'path': '#ansicyan',
+    'instruction': '#ansibrightgreen',
+})
 
 try:
     from lib.aifunc import ai
     from git import Repo
 except ImportError as e:
     if 'git' in str(e):
-        print("system> Git executable not found.")
-        print("system> Please install Git using the following steps:")
-        print("1. Install Conda from https://docs.conda.io/en/latest/miniconda.html")
-        print("2. Create and activate a Conda environment:")
-        print("   conda create -n webwright python=3.10")
-        print("   conda activate webwright")
-        print("3. Install Git in the Conda environment:")
-        print("   conda install git")
-        print("4. Restart webwright:")
-        print("   webwright")
+        print_formatted_text(FormattedText([
+            ('class:error', "\nsystem> Git executable not found.\n"),
+            ('class:instruction', "\nPlease install Git using the following steps:\n"),
+            ('class:instruction', "\n1. Install Conda from "),
+            ('class:inline-code', "https://docs.conda.io/en/latest/miniconda.html"),
+            ('class:instruction', "\n\n2. Create and activate a Conda environment:\n"),
+            ('class:code', "   conda create -n webwright python=3.10\n"),
+            ('class:code', "   conda activate webwright\n"),
+            ('class:instruction', "\n3. Install Git in the Conda environment:\n"),
+            ('class:code', "   conda install git\n"),
+            ('class:instruction', "\n4. Restart webwright:\n"),
+            ('class:code', "   webwright\n"),
+        ]), style=custom_style)
         sys.exit(1)
     else:
         raise
@@ -67,20 +91,6 @@ history_file = os.path.join(webwright_dir, 'webwright_history')
 history = FileHistory(history_file)
 session = PromptSession(history=history, key_bindings=bindings)
 
-custom_style = Style.from_dict({
-    'code': '#ansiyellow',
-    'header': '#ansigreen bold',
-    'thinking': '#ansiblue bold',
-    'bold': 'bold',
-    'inline-code': '#ansicyan',
-    'error': '#ff8c00',  # Add this line for orange error messages
-    'math': '#ansimagenta',  # Add this line for magenta math expressions
-    'emoji': '#ansibrightmagenta',  # Add this line for emoji support
-    'username': '#ansigreen bold',
-    'model': '#ansiyellow bold',
-    'path': '#add8e6'
-})
-
 def custom_exception_handler(loop, context):
     # Extract the exception
     exception = context.get("exception")
@@ -100,9 +110,9 @@ def custom_exception_handler(loop, context):
     else:
         loop.default_exception_handler(context)
 
-async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, function_call_model):
+async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, api_to_use):
     try:
-        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, function_call_model=function_call_model, history=conversation_history)
+        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use, history=conversation_history)
         
         logger.debug(f"AI response: {results}")
 
@@ -140,7 +150,7 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
         return False, {"error": error_message}
 
 
-async def main(openai_token, anthropic_token, function_call_model="openai"):
+async def main(openai_token, anthropic_token, api_to_use="openai"):
     conversation_history = []  # Initialize conversation history
 
     while True:
@@ -150,7 +160,7 @@ async def main(openai_token, anthropic_token, function_call_model="openai"):
             
             prompt_text = [
                 ('class:username', f"{username}@"),
-                ('class:model', f"{function_call_model} "),
+                ('class:model', f"{api_to_use} "),
                 ('class:path', f"{current_path} $ ")
             ]
 
@@ -167,7 +177,7 @@ async def main(openai_token, anthropic_token, function_call_model="openai"):
             conversation_history.append({"role": "user", "content": question})
             # logger.info(f"Main: Added user message to history. Current history: {conversation_history}")
             
-            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, function_call_model)
+            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, api_to_use)
             
             if success and "explanation" in results:
                 formatted_response = format_response(results['explanation'])
@@ -188,29 +198,24 @@ async def main(openai_token, anthropic_token, function_call_model="openai"):
 
 def entry_point():
     # Get configs
-    openai_token = get_openai_api_key()
-    anthropic_token = get_anthropic_api_key()
+    api_to_use, openai_token, anthropic_token, function_call_model = determine_api_to_use()
+
+    if api_to_use is None:
+        print("No API selected. Exiting program.")
+        sys.exit(1)
+    
+    if not openai_token and not anthropic_token:
+        print("Error: Neither OpenAI nor Anthropic API key is set.")
+        print("Please set at least one API key in your environment variables or configuration file.")
+        print("Use OPENAI_API_KEY for OpenAI or ANTHROPIC_API_KEY for Anthropic.")
+        sys.exit(1)
+    
     setup_ssh_key()
 
     # Clear the screen
     os.system('cls' if os.name == 'nt' else 'clear')
 
-    function_call_model = None
-    result = radiolist_dialog(
-        title="Choose Function Call Model",
-        text="Select the function call model you want to use:",
-        values=[
-            ("openai", "OpenAI"),
-            ("anthropic", "Anthropic"),
-        ],
-    ).run()
-
-    if result is not None:
-        function_call_model = result
-    else:
-        print("system> No model to use.")
-        sys.exit()
-
+    # setup
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
@@ -218,7 +223,7 @@ def entry_point():
     loop.set_exception_handler(custom_exception_handler)
 
     try:
-        loop.run_until_complete(main(openai_token=openai_token, anthropic_token=anthropic_token, function_call_model=function_call_model))
+        loop.run_until_complete(main(openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use))
 
     except KeyboardInterrupt:
         print("system> KeyboardInterrupt received, cancelling tasks...")

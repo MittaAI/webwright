@@ -56,7 +56,7 @@ Webwright requires Anaconda and Docker to be configured on your system.
 
 3. **Create and activate a Conda environment**
    ```bash
-   conda create -n webwright python=3.10
+   conda create -n webwright python=3.8
    conda activate webwright
    ```
 
@@ -209,8 +209,11 @@ For developers who want to install Webwright for testing, building, and running 
    ```bash
    conda install git
    ```
-
-5. **Run Webwright from Source**
+5. **Add GITHUB_TOKEN to Environment**
+   ```bash
+   $env:GITHUB_TOKEN = "your_github_token"
+   ```
+6. **Run Webwright from Source**
    ```bash
    python webwright/main.py
    ```
