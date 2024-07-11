@@ -10,15 +10,13 @@ But Webwright is more than just a terminal shell - it's a transformative tool th
 
 Webwright isn't some feature-packed, revenue-driven tool. It's a no-nonsense, AI-powered terminal that gets shit done, plain and simple.
 
-Webwright is a trusted companion, a "ghost in your shell" that seamlessly integrates with your development workflow. It's an AI assistant that anticipates your needs and unlocks new possibilities.
-
 In the early days of computing, the command-line was king. This is for the tinkerers who remember that raw power.
 
 Webwright taps into that primal, user-first ethos. It's the ghost in your shell, an AI that speaks your language and understands your needs.
 
-With Webwright, you're in control. Generate code, manage projects, deploy apps - all from your terminal. It's the tool that puts the power back in your hands.
+With Webwright, you're in control. Generate code, manage projects, deploy apps, automate computer tasks - all from your terminal. It's the tool that puts the power back in your hands.
 
-Fuck the suits and their complicated products. Welcome to Webwright, where the only thing that matters is getting the job done, one line of code at a time. This is computing at its most raw, most powerful, and most liberating.
+This is computing at its most raw, most powerful, and most liberating.
 
 Are you ready to unleash the ghost in your shell?
 
