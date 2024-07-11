@@ -8,6 +8,7 @@ from coolname import generate_slug
 
 import re
 from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
 import logging
 
 # Ensure the .webwright directory exists
