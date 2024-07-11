@@ -215,20 +215,15 @@ def set_openai_api_key(api_key):
 ###############################################################################
 import anthropic
 
-def get_openai_api_key():
-    openai_token = os.getenv("OPENAI_API_KEY") or get_config_value("config", "OPENAI_API_KEY")
-    while not openai_token:
-        openai_token = input_dialog(
-            title="OpenAI API Key",
-            text="Please enter your OpenAI API key:"
-        ).run()
-        if openai_token:
-            set_config_value("config", "OPENAI_API_KEY", openai_token)
-        else:
-            print("Invalid token. Please try again.")
-            openai_token = None
-    return openai_token
-
+def check_anthropic_token(anthropic_token):
+    try:
+        client = anthropic.Client(anthropic_token)
+        response = client.call_endpoint("v1/completions", prompt="Confirm the token is working.", max_tokens=5)
+        print("Anthropic API token verified successfully.")
+        return True
+    except Exception as e:
+        print(f"Error verifying Anthropic API token: {str(e)}")
+        return False
 
 def get_anthropic_api_key():
     anthropic_token = os.getenv("ANTHROPIC_API_KEY") or get_config_value("config", "ANTHROPIC_API_KEY")
@@ -248,7 +243,7 @@ def get_anthropic_api_key():
 def set_anthropic_api_key(api_key):
     set_config_value("config", "ANTHROPIC_API_KEY", api_key)
 
-
+# Response formatting
 def format_response(response):
     if response is None:
         return FormattedText([('class:error', "No response to format.\n")])
