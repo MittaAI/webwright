@@ -1,6 +1,6 @@
 # Changelog
 
-## 2024-07-11 17:44:09
+## 2024-07-11 17:44:17
 ### Changes
 ### Changelog
 
@@ -8,7 +8,7 @@
 - **README.md**
   - Changed Conda environment creation command from Python 3.10 to Python 3.8.
   - Added steps to set the `GITHUB_TOKEN` to the environment.
-  - Changed configuration for running Webwright from the source.
+  - Changed configuration for running Webwright from source.
 
 - **lib/aifunc.py**
   - Updated function argument from `function_call_model` to `api_to_use`.
