@@ -5,7 +5,6 @@ pygments
 openai
 openai[datalib]
 tenacity
-flask
 anthropic
 torch
 transformers
@@ -13,4 +12,3 @@ sentence_transformers==2.2.2
 InstructorEmbedding
 Halo
 PyGithub
-gitpython

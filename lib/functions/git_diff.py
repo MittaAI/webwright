@@ -5,6 +5,7 @@ from lib.function_wrapper import function_info_decorator
 def git_diff() -> dict:
     """
     Runs the 'git diff' command and captures the output.
+    We can use this to write a git commit message, which would get written to the github repo.
     :return: A dictionary containing the success status and the diff output or error message.
     :rtype: dict
     """

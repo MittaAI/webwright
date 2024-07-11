@@ -3,6 +3,7 @@ import inspect
 import os
 import importlib.util
 import logging
+import asyncio
 import sys
 
 tools = []  # A registry to hold all decorated functions' info
@@ -32,12 +33,6 @@ class FunctionWrapper:
             }
             if arg.arg != 'self':  # Exclude 'self' from required parameters for class methods
                 parameters["required"].append(argument_name)
-        
-        # Add follow_up_function parameter
-        parameters["properties"]["follow_up_function"] = {
-            "type": "object",
-            "description": "An optional follow-up function to call after this function."
-        }
         
         return_type = self.convert_type_name(self.extract_return_type(tree))
         function_info = {
@@ -91,6 +86,9 @@ class FunctionWrapper:
             'int': 'integer',
             'str': 'string',
             'bool': 'boolean',
+            'float': 'number',
+            'list': 'array',
+            'dict': 'object',
             # Add more mappings as needed
         }
         return type_mapping.get(type_name, type_name)
@@ -125,3 +123,36 @@ def load_functions_from_directory(directory):
 # Load all functions from the lib/functions directory
 functions_directory = os.path.join(os.path.dirname(__file__), 'functions')
 load_functions_from_directory(functions_directory)
+
+@function_info_decorator
+async def multi_tool_use_parallel(tool_uses):
+    """
+    Execute multiple tool uses in parallel.
+
+    :param tool_uses: A list of tool use objects, each containing 'recipient_name' and 'parameters'.
+    :type tool_uses: list
+    :return: A list of results from the executed tool uses.
+    """
+    async def execute_tool(tool_use):
+        function_name = tool_use['recipient_name']
+        parameters = tool_use['parameters']
+        return await execute_function_by_name(function_name, **parameters)
+
+    results = await asyncio.gather(*[execute_tool(tool_use) for tool_use in tool_uses])
+    return results
+
+# Manually adjust the function info to include the correct schema for tool_uses
+multi_tool_use_parallel.function_info['parameters']['properties']['tool_uses'] = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "recipient_name": {"type": "string"},
+            "parameters": {"type": "object"}
+        },
+        "required": ["recipient_name", "parameters"]
+    }
+}
+
+# Add multi_tool_use_parallel to callable_registry
+callable_registry['multi_tool_use_parallel'] = multi_tool_use_parallel
