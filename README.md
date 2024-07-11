@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/MittaAI/webwright/main/logo.png" width="200" alt="Webwright Logo">
+  <img src="https://github.com/MittaAI/webwright/blob/main/assets/logo.png" width="200" alt="Webwright Logo">
 </div>
 
 # Webwright: The Ghost in Your Shell 👻💻
@@ -38,7 +38,7 @@ Please ensure you have at least one of these API keys before proceeding with the
 - 🔧 **Infinitely Extensible**: Customize your shell with bespoke commands and scripts.
 
 ## Demo
-![Animated GIF](https://github.com/MittaAI/webwright/blob/main/video.gif?raw=true)
+![Animated GIF](https://github.com/MittaAI/webwright/blob/main/assets/video.gif?raw=true)
 
 ## 🛠️ Installation
 Webwright requires Anaconda and Docker to be configured on your system.
@@ -181,7 +181,7 @@ generate_fractal(20)
 
 ### Output
 
-<img src="https://raw.githubusercontent.com/MittaAI/webwright/main/fractal.png" alt="Fractal">
+<img src="https://github.com/MittaAI/webwright/blob/main/assets/fractal.png?raw=true" alt="Fractal">
 
 ## Documentation
 
