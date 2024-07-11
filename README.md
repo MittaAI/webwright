@@ -4,15 +4,13 @@
 
 # Webwright: The Ghost in Your Shell 👻💻
 
-Webwright is an AI-driven terminal shell.
+Webwright is an AI-driven terminal shell. 
 
-But Webwright is more than just a terminal shell - it's a transformative tool that's difficult to fully capture without experiencing it.
+But Webwright is more than just a terminal shell - it's a transformative tool that's difficult to fully capture without experiencing it, which gets shit done, plain and simple.
 
-Webwright isn't some feature-packed, revenue-driven tool. It's a no-nonsense, AI-powered terminal that gets shit done, plain and simple.
+In the early days of computing, the command-line was king. This is for the tinkerers and hackers who remember that raw power.
 
-In the early days of computing, the command-line was king. This is for the tinkerers who remember that raw power.
-
-Webwright taps into that primal, user-first ethos. It's the ghost in your shell, an AI that speaks your language and understands your needs.
+Webwright taps into that primal, user-first ethos. It's a ghost in a shell, an AI that speaks your language and understands what your needs.
 
 With Webwright, you're in control. Generate code, manage projects, deploy apps, automate computer tasks - all from your terminal. It's the tool that puts the power back in your hands.
 
