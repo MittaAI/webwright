@@ -183,6 +183,93 @@ generate_fractal(20)
 
 <img src="https://github.com/MittaAI/webwright/blob/main/assets/fractal.png?raw=true" alt="Fractal">
 
+
+### Developer Installation
+
+For developers who want to install Webwright for testing, building, and running from source:
+
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/MittaAI/webwright.git
+   cd webwright
+   ```
+
+2. **Set up Conda Environment**
+   ```bash
+   conda create -n webwright python=3.10
+   conda activate webwright
+   ```
+
+3. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Install Git (if not already installed)**
+   ```bash
+   conda install git
+   ```
+
+5. **Run Webwright from Source**
+   ```bash
+   python webwright/main.py
+   ```
+
+### Building and Testing
+
+To build and test Webwright:
+
+1. **Install Development Dependencies**
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
+
+2. **Run Tests**
+   ```bash
+   pytest
+   ```
+
+3. **Build Package**
+   ```bash
+   python setup.py sdist bdist_wheel
+   ```
+
+### Git Setup for Developers
+
+If you're planning to contribute to Webwright, make sure to set up your Git environment:
+
+1. **Configure Git**
+   ```bash
+   git config --global user.name "Your Name"
+   git config --global user.email "your.email@example.com"
+   ```
+
+2. **Create a New Branch for Your Changes**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+3. **Make Your Changes and Commit**
+   ```bash
+   git add .
+   git commit -m "Description of your changes"
+   ```
+
+4. **Push Your Changes and Create a Pull Request**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+   Then, go to the GitHub repository and create a pull request for your branch.
+
+Remember to always pull the latest changes from the main branch before starting your work:
+
+```bash
+git checkout main
+git pull origin main
+```
+
+For more detailed contribution guidelines, please refer to our [CONTRIBUTING.md](link-to-contributing-file) file.
+
 ## Documentation
 
 For detailed usage instructions and examples, visit the [Webwright Documentation](https://mitta.ai/docs/webwright).
