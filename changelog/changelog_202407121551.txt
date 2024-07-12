@@ -1,0 +1,14 @@
+# Changelog
+
+## 2024-07-12 15:51:24
+### Changes
+Fix #24: Program Exits During Initial Setup
+
+- Deleted obsolete scripts and text files:
+  - changelog_message.txt
+  - clear_screen.py
+  - thoughts.txt
+  - wind_chimes_opinion.txt
+- Improved lib/util.py to handle missing API keys more gracefully.
+  - Added handling for 'NONE' state in OpenAI and Anthropic token retrievals.
+  - Enhanced user prompts and error messages.
