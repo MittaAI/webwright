@@ -201,13 +201,22 @@ def check_openai_token(openai_token):
 
 def get_openai_api_key():
     openai_token = os.getenv("OPENAI_API_KEY") or get_config_value("config", "OPENAI_API_KEY")
+
+    if openai_token == "NONE":
+        return None
+    
     if openai_token and check_openai_token(openai_token):
         return openai_token
-    
+
     openai_token = input_dialog(
         title="OpenAI API Key",
-        text="Enter your OpenAI API key (Ctrl-Shift-V to paste or Enter to skip):"
+        text="Enter your OpenAI API key (Enter to skip):"
     ).run()
+
+    if openai_token == '':  # User hit Enter without providing a token
+        print("OpenAI token entry cancelled.")
+        set_config_value("config", "OPENAI_API_KEY", "NONE")
+        return None
     
     if openai_token:
         if check_openai_token(openai_token):
@@ -252,14 +261,22 @@ def check_anthropic_token(anthropic_token):
 
 def get_anthropic_api_key():
     anthropic_token = os.getenv("ANTHROPIC_API_KEY") or get_config_value("config", "ANTHROPIC_API_KEY")
+    if anthropic_token == "NONE":
+        return None
+    
     if anthropic_token and check_anthropic_token(anthropic_token):
         return anthropic_token
     
     anthropic_token = input_dialog(
         title="Anthropic API Key",
-        text="Enter your Anthropic API key (Ctrl-Shift-V to paste or Enter to skip):"
+        text="Enter your Anthropic API key (Enter to skip):"
     ).run()
-    
+
+    if anthropic_token == '':  # User hit Enter without providing a token
+        print("Anthropic token entry cancelled.")
+        set_config_value("config", "ANTHROPIC_API_KEY", "NONE")
+        return None
+
     if anthropic_token:
         if check_anthropic_token(anthropic_token):
             set_config_value("config", "ANTHROPIC_API_KEY", anthropic_token)
@@ -326,7 +343,7 @@ def determine_api_to_use():
         try:
             should_exit = yes_no_dialog(
                 title="Exit Program",
-                text="Can't proceed. Would you like to exit the program?"
+                text="Can't proceed without tokens. Edit your ~/.webwright/webwright_config file to set the API key(s). Exit program?"
             ).run()
             if should_exit:
                 return None, None, None, None
