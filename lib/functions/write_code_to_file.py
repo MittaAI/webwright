@@ -15,7 +15,7 @@ def write_code_to_file(file_path: str, code: str) -> dict:
 
     You can use matplot to do graphs, but they should be run with run_python_file_non_blocking
     If you write code, you should offer to show it. If it's short, you can show it before asking.
-    
+
     :param file_path: The path of the file to write the code to.
     :type file_path: str
     :param code: The code to write to the file.
@@ -25,10 +25,14 @@ def write_code_to_file(file_path: str, code: str) -> dict:
     """
     try:
         diff_filename = None
+        logging.info("here1")
         if os.path.exists(file_path):
+            logging.info(f"File exists: {file_path}")
+
             # Read the original content of the file
             with open(file_path, 'r') as file:
                 original_code = file.read()
+            logging.info(f"Original code:\n{original_code}")
 
             # Generate a diff between the original and new code
             diff = difflib.unified_diff(
@@ -77,3 +81,4 @@ def write_code_to_file(file_path: str, code: str) -> dict:
 
 # Example usage
 result = write_code_to_file('/Users/andylegrand/Desktop/untitled folder/print_pi.py', 'print("Hello, World!")')
+#result = write_code_to_file('/Users/andylegrand/Desktop/untitled folder/print_pi.py', 'print("yeet!")')
