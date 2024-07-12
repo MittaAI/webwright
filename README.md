@@ -214,6 +214,16 @@ For developers who want to install Webwright for testing, building, and running 
    python webwright/main.py
    ```
 
+### Conda Initialization in VSCode
+
+If you are using VSCode and need to get conda working in the editor, you might need to run the following command from the `condabin` directory:
+
+```
+./conda init powershell
+```
+
+This will set up the necessary configuration for conda to work properly within VSCode terminal sessions.
+
 ### Building and Testing
 
 To build and test Webwright:

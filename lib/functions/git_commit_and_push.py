@@ -5,7 +5,7 @@ from github import Github  # Using PyGitHub for PR creation
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
-def git_commit_and_push(commit_message: str = "Automated commit", branch_name: str = None, github_token: str = None, pr_title: str = None, pr_body: str = None) -> dict:
+def git_commit_and_push(commit_message: str = "Automated commit", branch_name: str = None, pr_title: str = None, pr_body: str = None) -> dict:
     """
     Automatically stages all changes, commits them with the provided message, generates a changelog,
     saves it in the changelog directory with a timestamp filename, pushes the changes to the remote repository,
