@@ -198,12 +198,20 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         spinner.start()
         
         async def execute_function(func_call):
+             # i want to to check if it's set_api_config_dialog and if it is then set the spinner
+            if func_call["name"] == "set_api_config_dialog":
+                func_call["arguments"]["spinner"] = spinner
+
             result = await execute_function_by_name(func_call["name"], **func_call["arguments"])
             return {"id": func_call["id"], "result": result}
 
         function_results = await asyncio.gather(*[execute_function(func_call) for func_call in function_calls])
         
-        spinner.stop()
+        # stop the spinner and strip it back out of the arguments
+        try:
+            spinner.stop()
+        except:
+            pass
 
         # Update messages with function calls and results
         new_message_content = []
@@ -214,6 +222,9 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             })
 
         for func_call in function_calls:
+            # remove the spinner from the arguments before adding to the message
+            func_call["arguments"].pop("spinner", None)
+
             if api_to_use == "openai":
                 messages.append({
                     "role": "assistant",
