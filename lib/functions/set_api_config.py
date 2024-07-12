@@ -1,65 +1,72 @@
 from lib.function_wrapper import function_info_decorator
-from lib.util import set_config_value, get_config_value, check_openai_token, check_anthropic_token
+from lib.util import set_config_value, check_openai_token, check_anthropic_token
+import asyncio
+import json
 
 @function_info_decorator
-def set_api_config(config_type: str, value: str) -> dict:
+async def set_api_config_dialog(config_type: str, spinner=None) -> dict:
     """
-    Sets the API configuration for OpenAI or Anthropic, or sets the API to use for function calls.
+    Asynchronously set the API configuration for OpenAI or Anthropic, or set the preferred API to use for function calls.
     
     :param config_type: The type of configuration to set. Can be 'openai_key', 'anthropic_key', or 'preferred_api'.
     :type config_type: str
-    :param value: The value to set for the chosen configuration type.
-    :type value: str
+    :param spinner: Optional spinner object to handle UI feedback.
+    :type spinner: object
     :return: A dictionary containing the status of the operation and any relevant messages.
     :rtype: dict
     """
     try:
+        if spinner:
+            spinner.stop()
+
+        loop = asyncio.get_event_loop()
+
         if config_type == 'openai_key':
-            if check_openai_token(value):
-                set_config_value("config", "OPENAI_API_KEY", value)
-                return {"success": True, "message": "OpenAI API key set successfully."}
+            token = await loop.run_in_executor(None, input, "Enter your OpenAI API key: ")
+            if token:
+                is_valid = await loop.run_in_executor(None, check_openai_token, token)
+                if is_valid:
+                    await loop.run_in_executor(None, set_config_value, "config", "OPENAI_API_KEY", token)
+                    result = {"success": True, "message": "OpenAI API key set successfully."}
+                else:
+                    result = {"success": False, "message": "Invalid OpenAI API key. Please try again."}
             else:
-                return {"success": False, "message": "Invalid OpenAI API key."}
+                result = {"success": False, "message": "OpenAI API key entry cancelled."}
         
         elif config_type == 'anthropic_key':
-            if check_anthropic_token(value):
-                set_config_value("config", "ANTHROPIC_API_KEY", value)
-                return {"success": True, "message": "Anthropic API key set successfully."}
+            token = await loop.run_in_executor(None, input, "Enter your Anthropic API key: ")
+            if token:
+                is_valid = await loop.run_in_executor(None, check_anthropic_token, token)
+                if is_valid:
+                    await loop.run_in_executor(None, set_config_value, "config", "ANTHROPIC_API_KEY", token)
+                    result = {"success": True, "message": "Anthropic API key set successfully."}
+                else:
+                    result = {"success": False, "message": "Invalid Anthropic API key. Please try again."}
             else:
-                return {"success": False, "message": "Invalid Anthropic API key."}
+                result = {"success": False, "message": "Anthropic API key entry cancelled."}
         
         elif config_type == 'preferred_api':
-            allowed_apis = ['openai', 'anthropic']
-            if value.lower() in allowed_apis:
-                set_config_value("config", "PREFERRED_API", value.lower())
-                return {"success": True, "message": f"Preferred API set to {value.lower()}."}
+            await loop.run_in_executor(None, print, "Select the preferred API to use:")
+            await loop.run_in_executor(None, print, "1. OpenAI")
+            await loop.run_in_executor(None, print, "2. Anthropic")
+            choice = await loop.run_in_executor(None, input, "Enter your choice (1 or 2): ")
+            if choice == '1':
+                await loop.run_in_executor(None, set_config_value, "config", "PREFERRED_API", "openai")
+                result = {"success": True, "message": "Preferred API set to OpenAI."}
+            elif choice == '2':
+                await loop.run_in_executor(None, set_config_value, "config", "PREFERRED_API", "anthropic")
+                result = {"success": True, "message": "Preferred API set to Anthropic."}
             else:
-                return {"success": False, "message": f"Invalid API choice. Allowed options are: {', '.join(allowed_apis)}"}
+                result = {"success": False, "message": "Invalid choice. Preferred API selection cancelled."}
         
         else:
-            return {"success": False, "message": "Invalid config_type. Must be 'openai_key', 'anthropic_key', or 'preferred_api'."}
+            result = {"success": False, "message": "Invalid config_type. Must be 'openai_key', 'anthropic_key', or 'preferred_api'."}
 
     except Exception as e:
-        return {"success": False, "message": f"An error occurred: {str(e)}"}
+        result = {"success": False, "message": f"An error occurred: {str(e)}"}
 
-@function_info_decorator
-def get_current_api_config() -> dict:
-    """
-    Retrieves the current API configuration.
-    
-    :return: A dictionary containing the current API configuration.
-    :rtype: dict
-    """
-    try:
-        openai_key = get_config_value("config", "OPENAI_API_KEY")
-        anthropic_key = get_config_value("config", "ANTHROPIC_API_KEY")
-        preferred_api = get_config_value("config", "PREFERRED_API")
-        
-        return {
-            "success": True,
-            "openai_key_set": bool(openai_key),
-            "anthropic_key_set": bool(anthropic_key),
-            "preferred_api": preferred_api or "Not set"
-        }
-    except Exception as e:
-        return {"success": False, "message": f"An error occurred: {str(e)}"}
+    finally:
+        if spinner:
+            spinner.start()
+
+    return result

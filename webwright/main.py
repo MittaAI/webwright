@@ -232,6 +232,12 @@ def entry_point():
             task.cancel()
         loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
         loop.run_until_complete(loop.shutdown_asyncgens())
+    except OSError as e:
+        if e.winerror == 10038:
+            print_formatted_text(FormattedText([('class:error', f"system> Handled WinError 10038: {str(e)}")]), style=custom_style)
+            logger.error(f"Handled WinError 10038: {str(e)}")
+        else:
+            raise
     except Exception as e:
         print(f"system> Error during shutdown: {str(e)}")
         logger.error(f"Error during shutdown: {str(e)}")
@@ -239,7 +245,8 @@ def entry_point():
     finally:
         print("system> Closing event loop.")
         loop.close()
-        print("system> Shutdown complete.")
+        print_formatted_text(FormattedText([('class:success', "system> Shutdown complete.")]), style=custom_style)
+
 
 if __name__ == "__main__":
     entry_point()

@@ -1,0 +1,5 @@
+# Changelog
+
+## 2024-07-12 18:14:47
+### Changes
+Add asynchronous API config dialog, improve error handling
