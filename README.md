@@ -4,17 +4,13 @@
 
 # Webwright: The Ghost in Your Shell 👻💻
 
-Webwright is an AI-driven terminal shell. 
+Webwright is more than just a terminal shell—it's a transformative tool that gets things done, plain and simple.
 
-But Webwright is more than just a terminal shell - it's a transformative tool that's difficult to fully capture without experiencing it, which gets shit done, plain and simple.
+In the early days of computing, the command line was king. Webwright is for the tinkerers and hackers who remember that raw power. It taps into that primal, user-first ethos, acting as a ghost in your shell: an AI that speaks your language and understands your needs.
 
-In the early days of computing, the command-line was king. This is for the tinkerers and hackers who remember that raw power.
+With Webwright, you're in control. Generate code, manage projects, deploy apps, and automate tasks—all from your terminal. It's the tool that puts power back in your hands.
 
-Webwright taps into that primal, user-first ethos. It's a ghost in a shell, an AI that speaks your language and understands what your needs.
-
-With Webwright, you're in control. Generate code, manage projects, deploy apps, automate computer tasks - all from your terminal. It's the tool that puts the power back in your hands.
-
-This is computing at its most raw, most powerful, and most liberating.
+This is computing at its rawest, most powerful, and most liberating.
 
 Are you ready to unleash the ghost in your shell?
 
@@ -217,6 +213,16 @@ For developers who want to install Webwright for testing, building, and running 
    ```bash
    python webwright/main.py
    ```
+
+### Conda Initialization in VSCode
+
+If you are using VSCode and need to get conda working in the editor, you might need to run the following command from the `condabin` directory:
+
+```
+./conda init powershell
+```
+
+This will set up the necessary configuration for conda to work properly within VSCode terminal sessions.
 
 ### Building and Testing
 
