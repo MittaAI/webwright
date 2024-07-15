@@ -5,7 +5,7 @@ from lib.function_wrapper import function_info_decorator
 @function_info_decorator
 def write_code_to_file(file_path: str, code: str) -> dict:
     """
-    Writes code to a specified file.
+    Writes code to a specified file, if the file doesn't exist. If the file exists, the LLM should use create_code_diff to do the work.
     If the file_path is just a file name, it defaults to the current directory.
     You can use matplot to do graphs, but they should be run with run_python_file_non_blocking
     If you write code, you should offer to show it. If it's short, you can show it before asking.

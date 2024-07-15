@@ -6,6 +6,9 @@ def find_chrome_executable() -> str:
     # Common installation paths for Chrome
     common_paths = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chrome.app/Contents/MacOS/Google Chrome",
+        "$HOME/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
         r"C:\Users\%USERNAME%\AppData\Local\Google\Chrome\Application\chrome.exe"
     ]
@@ -25,10 +28,30 @@ def find_chrome_executable() -> str:
     for dir in search_dirs:
         for root, _, files in os.walk(dir):
             if 'chrome.exe' in files:
-                return os.path.join(root, 'chrome.exe')
+def find_safari_executable() -> str:
+    # Common installation path for Safari on macOS
+    safari_path = "/Applications/Safari.app/Contents/MacOS/Safari"
+
+    if os.path.exists(safari_path):
+        return safari_path
 
     return ""
 
+                return os.path.join(root, 'chrome.exe')
+
+        if os.name == 'posix':  # macOS
+            safari_path = find_safari_executable()
+            if not safari_path:
+                return {
+                    "success": False,
+                    "message": "Neither Chrome nor Safari executables were found. Please make sure either Chrome or Safari is installed."
+                }
+            browser_path = safari_path
+            browser_name = "Safari"
+        else:  # Windows
+    return ""
+
+    On macOS, opens Chrome first, and falls back to Safari if Chrome is not found.
 def find_edge_executable() -> str:
     # Common installation paths for Edge
     common_paths = [
