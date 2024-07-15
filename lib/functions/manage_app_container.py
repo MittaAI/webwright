@@ -1,6 +1,5 @@
 import os
 import subprocess
-import shutil
 import re
 from lib.util import setup_logging, get_logger
 from lib.function_wrapper import function_info_decorator
@@ -9,68 +8,65 @@ from lib.function_wrapper import function_info_decorator
 logger = setup_logging()
 
 @function_info_decorator
-def manage_app_container(action: str) -> dict:
+def manage_app_container(action: str, app_path: str, port: int) -> dict:
     """
     Allows the local Mitta agent to manage a Docker container for an application, allowing the agent to start, stop, restart, and recreate container actions.
 
     Example: "start the app" would start the Docker container for the app if it wasn't running.
 
     :param action: The action to perform: 'start', 'stop', 'restart', or 'recreate'.
+    :param app_path: The path to the application directory.
+    :param port: The port number on which the application should run.
     :return: A dictionary containing the success status and any relevant messages.
     :rtype: dict
     """
-    # Generate container name based on the current directory name
-    current_dir = os.getcwd()
-    project_name = os.path.basename(current_dir)
-    container_name = f"{project_name.lower().replace(' ', '_')}_container"
-    image_name = f"{project_name.lower().replace(' ', '_')}_image"
-    
-    # Paths
-    log_directory = os.path.expanduser('~/.myapp/logs')
-    log_file = os.path.join(log_directory, 'app.log')
-    if not os.path.exists(log_directory):
-        os.makedirs(log_directory)
-
-    dockerfile_path = os.path.join(current_dir, 'Dockerfile')
-    
-    # Read Dockerfile and extract information
-    if os.path.exists(dockerfile_path):
-        with open(dockerfile_path, 'r') as f:
-            dockerfile_content = f.read()
-        
-        # Extract port from Dockerfile
-        port_match = re.search(r'EXPOSE\s+(\d+)', dockerfile_content)
-        if port_match:
-            container_port = port_match.group(1)
-            port_mapping = f"{container_port}:{container_port}"
-        else:
-            container_port = "5000"
-            port_mapping = "5000:5000"  # Default if not found
-        
-        # Extract base image from Dockerfile (if specified)
-        image_match = re.search(r'FROM\s+(.+)', dockerfile_content)
-        if image_match:
-            base_image = image_match.group(1)
-            logger.info(f"Using base image: {base_image}")
-    else:
-        logger.error(f"Dockerfile not found at: {dockerfile_path}")
-        return {
-            "success": False,
-            "message": f"Dockerfile not found at: {dockerfile_path}"
-        }
-
-    temp_dir = os.path.join(current_dir, 'app_temp')
+    original_dir = os.getcwd()
 
     try:
+        # Change to the application directory
+        os.chdir(app_path)
+        logger.info(f"Changed to application directory: {app_path}")
+
+        # Generate container name based on the application directory name
+        project_name = os.path.basename(app_path)
+        container_name = f"{project_name.lower().replace(' ', '_')}_container"
+        image_name = f"{project_name.lower().replace(' ', '_')}_image"
+
+        # Set up logging
+        log_directory = os.path.expanduser(f'~/.webwright/apps/{project_name}')
+        log_file = os.path.join(log_directory, f'{project_name}.log')
+        if not os.path.exists(log_directory):
+            os.makedirs(log_directory)
+
+        # Ensure Dockerfile exists in the current directory
+        if not os.path.exists('Dockerfile'):
+            logger.error("Dockerfile not found in the current directory")
+            return {
+                "success": False,
+                "message": "Dockerfile not found in the current directory"
+            }
+        
+
+        # Output the port information before executing any commands
+        port = None
+        with open('Dockerfile', 'r') as dockerfile:
+            for line in dockerfile:
+                match = re.search(r"EXPOSE (\d+)", line)
+                if match:
+                    port = match.group(1)
+                    break
+        if not port:
+            logger.error("Port not found in the Dockerfile.")
+            return {
+                "success": False,
+                "message": "Port not found in the Dockerfile."
+            }
+        logger.info(f"Detected port: {port}")
+
         if action == 'stop':
             stop_command = f"docker stop {container_name} && docker rm {container_name}"
             subprocess.run(stop_command, shell=True, check=True)
             logger.info(f"Container {container_name} stopped and removed successfully.")
-
-            # Clean up the temporary directory
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-                logger.info(f"Temporary directory {temp_dir} cleaned up.")
 
             return {
                 "success": True,
@@ -84,33 +80,17 @@ def manage_app_container(action: str) -> dict:
             action = 'start'  # Proceed to the start action after stopping
 
         if action == 'start' or action == 'recreate':
-            # Clean up the temporary directory
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-                logger.info(f"Temporary directory {temp_dir} cleaned up.")
-
-            # Create a temporary directory for our files
-            os.makedirs(temp_dir, exist_ok=True)
-            logger.info(f"Temporary directory created at: {temp_dir}")
-            
-            # Copy necessary files to temporary directory
-            shutil.copy2(dockerfile_path, temp_dir)
-            shutil.copytree(current_dir, temp_dir, dirs_exist_ok=True)
-            logger.info(f"Copied necessary files to temporary directory.")
-            
-            # Change to the temporary directory
-            os.chdir(temp_dir)
-            logger.info(f"Changed to temporary directory: {temp_dir}")
-            
             # Build Docker image
             build_command = f"docker build -t {image_name} ."
             subprocess.run(build_command, shell=True, check=True)
             logger.info(f"Docker image {image_name} built successfully.")
             
             # Start Docker container
+            port_mapping = f"{port}:{port}"
             run_command = f"docker run -d --name {container_name} -p {port_mapping} {image_name}"
             subprocess.run(run_command, shell=True, check=True)
-            logger.info(f"Container {container_name} started successfully. Access the app at http://localhost:{container_port}")
+            
+            logger.info(f"Container {container_name} started successfully. Access the app at http://localhost:{port}")
             
             # Log the output
             log_command = f"docker logs -f {container_name}"
@@ -119,7 +99,7 @@ def manage_app_container(action: str) -> dict:
             
             return {
                 "success": True,
-                "message": f"Container {container_name} started successfully. Access the app at http://localhost:{container_port}"
+                "message": f"Container {container_name} started successfully. Access the app at http://localhost:{port}"
             }
         
         else:
@@ -143,5 +123,5 @@ def manage_app_container(action: str) -> dict:
         }
     finally:
         # Change back to the original directory
-        os.chdir(current_dir)
-        logger.info(f"Changed back to the original directory: {current_dir}")
+        os.chdir(original_dir)
+        logger.info(f"Changed back to the original directory: {original_dir}")
