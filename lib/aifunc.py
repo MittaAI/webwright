@@ -32,6 +32,8 @@ logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=loggi
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
+SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps. Provide the user with an overview of your steps, then call the necessary functions. Try to accomplish the goals in as few function calls as possible. If executing a series of 3 or more functions, or modifying files please ask the user for confirmation before executing."
+
 # Execute function by name
 async def execute_function_by_name(function_name, **kwargs):
     logging.info(f"calling {function_name}")
@@ -52,6 +54,11 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
     if tools:
         function_names = [tool['function']['name'] for tool in tools]
         logging.info("Available OpenAI functions: %s", function_names)
+
+    messages.append({
+      "role": "system",
+      "content": SYSTEM_PROMPT
+    })
 
     # logging.info(f"Messages: {messages}")
     try:
@@ -82,7 +89,8 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
                 anthropic_tools.append({
                     "name": tool['function']['name'],
                     "description": tool['function']['description'],
-                    "input_schema": tool['function']['parameters']
+                    "input_schema": tool['function']['parameters'],
+                    "system_prompt": SYSTEM_PROMPT
                 })
             else:
                 # If the tool is already in Anthropic format, use it as is
@@ -150,11 +158,15 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             if assistant_message.tool_calls:
                 function_calls = []
                 for tool_call in assistant_message.tool_calls:
-                    function_calls.append({
+                    try:
+                      function_calls.append({
                         "name": tool_call.function.name,
                         "arguments": json.loads(tool_call.function.arguments),
                         "id": tool_call.id
-                    })
+                      })
+                    except Exception as e:
+                      print(f"Failed to process tool call: {tool_call}")
+                      print(f"Error: {e}")
             else:
                 # AI provided a direct response without calling any functions
                 spinner.stop()
