@@ -1,13 +1,14 @@
 import os
 from datetime import datetime
 from lib.function_wrapper import function_info_decorator
+import difflib
 
 @function_info_decorator
 def create_code_diff(diff: str, file_path: str) -> dict:
     """
     1. Takes a diff string and a file path as input.
     2. Saves the diff to the user's .webwright directory.
-    3. Applies the diff to the specified file.
+    3. Applies the diff to the specified file using difflib.
     4. Logs the diff in the changelog in the user's .webwright directory.
     :param diff: The diff string containing the changes to apply.
     :type diff: str
@@ -31,33 +32,22 @@ def create_code_diff(diff: str, file_path: str) -> dict:
         with open(diff_file_path, 'w') as diff_file:
             diff_file.write(diff)
 
-        # Step 3: Apply the diff to the specified file
+        # Step 3: Apply the diff to the specified file using difflib
         with open(file_path, "r") as file:
-            original_contents = file.readlines()
+            original_contents = file.read()
 
-        new_contents = original_contents.copy()
-        current_line = 0
+        # Parse the unified diff
+        patch = difflib.unified_diff(original_contents.splitlines(keepends=True), 
+                                     original_contents.splitlines(keepends=True), 
+                                     n=0)
+        patch = list(patch)[2:]  # Remove the header lines
 
-        for line in diff.strip().split("\n"):
-            if line.startswith("@@"):
-                _, old_start, _ = line.split(" ", 2)
-                current_line = int(old_start.split(",")[0][1:]) - 1
-            elif line.startswith("+"):
-                new_contents.insert(current_line, line[1:] + "\n")
-                current_line += 1
-            elif line.startswith("-"):
-                if current_line < len(new_contents) and new_contents[current_line].strip() == line[1:].strip():
-                    new_contents.pop(current_line)
-                else:
-                    return {
-                        "success": False,
-                        "message": f"Mismatch at line {current_line + 1}. Expected: {line[1:]}, Found: {new_contents[current_line] if current_line < len(new_contents) else 'EOF'}"
-                    }
-            else:
-                current_line += 1
+        # Apply the parsed diff
+        patched_contents = difflib.patch(original_contents.splitlines(keepends=True), patch)
 
+        # Write the patched contents back to the file
         with open(file_path, "w") as file:
-            file.writelines(new_contents)
+            file.writelines(patched_contents)
 
         # Step 4: Log the diff in the changelog
         changelog_path = os.path.join(webwright_dir, 'changelog.txt')

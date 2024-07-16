@@ -5,8 +5,9 @@ from lib.function_wrapper import function_info_decorator
 @function_info_decorator
 def write_code_to_file(file_path: str, code: str) -> dict:
     """
-    Writes code to a specified file, if the file doesn't exist. If the file exists, the LLM should use create_code_diff to do the work.
-    If the file_path is just a file name, it defaults to the current directory.
+    1. Writes code to a specified file, if the file doesn't exist. 
+    2. If the file exists, refuses to update and suggests using create_code_diff_and_apply.
+    3. If the file_path is just a file name, it defaults to the current directory.
     You can use matplot to do graphs, but they should be run with run_python_file_non_blocking
     If you write code, you should offer to show it. If it's short, you can show it before asking.
     
@@ -21,6 +22,13 @@ def write_code_to_file(file_path: str, code: str) -> dict:
         # If file_path is just a file name, join it with the current directory
         if not os.path.dirname(file_path):
             file_path = os.path.join(os.getcwd(), file_path)
+
+        # Check if the file already exists
+        if os.path.exists(file_path):
+            return {
+                "success": False,
+                "message": f"File '{file_path}' already exists. Please use the create_code_diff_and_apply function to update existing files."
+            }
 
         # Ensure the directory exists
         directory = os.path.dirname(file_path)
