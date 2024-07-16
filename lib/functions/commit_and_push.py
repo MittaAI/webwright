@@ -3,11 +3,12 @@ import subprocess
 
 def git_commit_and_push(commit_message: str = "Automated commit") -> dict:
     """
-    Automatically stages all changes, commits them with the provided message, generates a changelog,
-    saves it in the changelog directory with a timestamp filename, and pushes the changes to the remote repository.
+    Automatically stages all changes and commits them with the provided message.
+    Pushes changes to the remote repository.
+
     NOTE: The LLM should use the git_diff function first to get a good commit message.
 
-    :param commit_message: The commit message to use for the commit. Defaults to "Automated commit".
+    :param commit_message: The commit message to use for the commit. Defaults to "Robots in disguise".
     :type commit_message: str
     :return: A dictionary containing the success status and any output or errors encountered.
     :rtype: dict

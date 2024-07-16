@@ -1,0 +1,5 @@
+# Changelog
+
+## 2024-07-15 18:35:50
+### Changes
+Updated functions and removed unused script
