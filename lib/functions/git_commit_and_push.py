@@ -25,6 +25,15 @@ def git_commit_and_push(commit_message: str = "Automated commit", branch_name: s
     :rtype: dict
     """
     try:
+        # Get the GitHub token from the environment variable
+        github_token = os.environ.get("GITHUB_TOKEN")
+        if not github_token:
+            return {
+                "success": False,
+                "error": "GitHub token not found",
+                "reason": "The 'GITHUB_TOKEN' environment variable is not set."
+            }
+        
         # Automatically detect the current repository path
         repo_path = os.getcwd()
 
