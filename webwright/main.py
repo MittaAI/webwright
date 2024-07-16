@@ -28,23 +28,7 @@ from lib.util import setup_logging, get_logger
 
 from halo import Halo
 
-# Styles
-custom_style = Style.from_dict({
-    'code': '#ansicyan',
-    'header': '#ansigreen bold',
-    'thinking': '#ansiblue italic',
-    'bold': 'bold',
-    'inline-code': '#ansiyellow',
-    'error': '#ansired bold',
-    'warning': '#ansiyellow',
-    'success': '#ansigreen',
-    'math': '#ansimagenta',
-    'emoji': '#ansibrightmagenta',
-    'username': '#ansigreen bold',
-    'model': '#ansiyellow bold',
-    'path': '#ansicyan',
-    'instruction': '#ansibrightgreen',
-})
+from custom_style import custom_style
 
 try:
     from lib.aifunc import ai
@@ -175,7 +159,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
             
             if question.strip().lower() in ['quit', 'exit']:
                 print("system> Bye!")
-                return
+                sys.exit()
             
             conversation_history.append({"role": "user", "content": question})
             # logger.info(f"Main: Added user message to history. Current history: {conversation_history}")
@@ -249,7 +233,7 @@ def entry_point():
         print("system> Closing event loop.")
         loop.close()
         print_formatted_text(FormattedText([('class:success', "system> Shutdown complete.")]), style=custom_style)
-        sys.exit(0)
+
 
 if __name__ == "__main__":
     entry_point()
