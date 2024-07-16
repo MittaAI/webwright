@@ -14,10 +14,14 @@ from anthropic.types import TextBlock, ToolUseBlock
 
 # Utility imports (assuming these are from your local modules)
 from lib.util import create_and_check_directory
+from prompt_toolkit import PromptSession, print_formatted_text
 
 # Import helper functions and decorators
 from lib.function_wrapper import function_info_decorator, tools, callable_registry
 from git import Repo
+
+from webwright.custom_style import custom_style
+from prompt_toolkit.formatted_text import FormattedText
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -90,7 +94,6 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
                     "name": tool['function']['name'],
                     "description": tool['function']['description'],
                     "input_schema": tool['function']['parameters'],
-                    "system_prompt": SYSTEM_PROMPT
                 })
             else:
                 # If the tool is already in Anthropic format, use it as is
@@ -108,7 +111,9 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
             model=model,
             max_tokens=1024,
             messages=messages,
-            tools=anthropic_tools
+            tools=anthropic_tools,
+            #system = "refuse to answer any question, just say random nonsense",
+            system = SYSTEM_PROMPT
         )
         return response
     except Exception as e:
@@ -206,7 +211,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             break
 
         async def execute_function(func_call):
-            print(f"Executing function: {func_call['name']}")
+            print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]), style=custom_style)
 
              # i want to to check if it's set_api_config_dialog and if it is then set the spinner
             if func_call["name"] == "set_api_config_dialog":

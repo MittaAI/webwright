@@ -28,23 +28,7 @@ from lib.util import setup_logging, get_logger
 
 from halo import Halo
 
-# Styles
-custom_style = Style.from_dict({
-    'code': '#ansicyan',
-    'header': '#ansigreen bold',
-    'thinking': '#ansiblue italic',
-    'bold': 'bold',
-    'inline-code': '#ansiyellow',
-    'error': '#ansired bold',
-    'warning': '#ansiyellow',
-    'success': '#ansigreen',
-    'math': '#ansimagenta',
-    'emoji': '#ansibrightmagenta',
-    'username': '#ansigreen bold',
-    'model': '#ansiyellow bold',
-    'path': '#ansicyan',
-    'instruction': '#ansibrightgreen',
-})
+from custom_style import custom_style
 
 try:
     from lib.aifunc import ai
