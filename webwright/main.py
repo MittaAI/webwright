@@ -175,7 +175,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
             
             if question.strip().lower() in ['quit', 'exit']:
                 print("system> Bye!")
-                sys.exit()
+                return
             
             conversation_history.append({"role": "user", "content": question})
             # logger.info(f"Main: Added user message to history. Current history: {conversation_history}")
@@ -249,7 +249,7 @@ def entry_point():
         print("system> Closing event loop.")
         loop.close()
         print_formatted_text(FormattedText([('class:success', "system> Shutdown complete.")]), style=custom_style)
-
+        sys.exit(0)
 
 if __name__ == "__main__":
     entry_point()

@@ -44,8 +44,14 @@ def manage_app_container(action: str, app_path: str, port: int, docker_compose: 
                 return {"success": True, "message": "Docker Compose services started successfully."}
             
         else:
+            # Get the project name from the application directory
+            if app_path == './' or app_path == '.' or not app_path:
+                project_name = os.path.basename(os.getcwd())
+            else:
+                project_name = os.path.basename(app_path)
+
             # Generate container name based on the application directory name
-            project_name = os.path.basename(app_path)
+            logger.info(f"project name is {project_name} in {app_path}")
             container_name = f"{project_name.lower().replace(' ', '_')}_container"
             image_name = f"{project_name.lower().replace(' ', '_')}_image"
 
