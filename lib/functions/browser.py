@@ -90,6 +90,9 @@ def browser(url: str) -> dict:
     Opens Google Chrome to a specified URL on Windows or macOS.
     Falls back to Microsoft Edge on Windows and Safari on macOS if Chrome is not found.
     Other functions may mention this function can be used to open a URL they provide.
+
+    Very useful when showing the user URLs.
+    
     :param url: The URL to open.
     :type url: str
     :return: A dictionary containing the success status and any relevant messages.
