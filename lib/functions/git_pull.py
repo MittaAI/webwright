@@ -44,11 +44,12 @@ def git_pull(branch_name: str = None, remote_name: str = 'origin') -> dict:
 
         # Check the result of the pull operation
         if pull_info:
-            if pull_info[0].flags & pull_info[0].HEAD_UPTODATE:
+            fetch_info = pull_info[0]
+            if fetch_info.note == "up to date":
                 message = f"Branch '{branch_name}' is already up to date."
-            elif pull_info[0].flags & pull_info[0].FAST_FORWARD:
+            elif fetch_info.note == "fast forward":
                 message = f"Successfully pulled changes into '{branch_name}'. Fast-forward."
-            elif pull_info[0].flags & pull_info[0].MERGED:
+            elif fetch_info.note == "merged":
                 message = f"Successfully pulled and merged changes into '{branch_name}'."
             else:
                 message = f"Pull operation completed, but status is unclear. Please check the repository."
