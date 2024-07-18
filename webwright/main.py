@@ -17,7 +17,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.clipboard import ClipboardData
-from prompt_toolkit.styles import Style
+
 from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
 
 from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key

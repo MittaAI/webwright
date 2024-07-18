@@ -20,7 +20,7 @@ from prompt_toolkit import PromptSession, print_formatted_text
 from lib.function_wrapper import function_info_decorator, tools, callable_registry
 from git import Repo
 
-from webwright.custom_style import custom_style
+from lib.util import custom_style
 from prompt_toolkit.formatted_text import FormattedText
 
 # Ensure the .webwright directory exists
