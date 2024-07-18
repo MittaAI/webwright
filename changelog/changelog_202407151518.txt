@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-15 15:18:49
-### Changes
-Add support for opening Chrome and Safari on macOS in browser.py

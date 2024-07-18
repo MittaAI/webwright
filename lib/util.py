@@ -359,7 +359,51 @@ def determine_api_to_use():
             else:
                 raise  # Re-raise if it's a different RuntimeError  
 
+# Github setup
+def get_github_token():
+    """
+    Attempts to retrieve the GitHub token first from environment variables, then from configuration.
 
+    Returns:
+        dict: A dictionary containing the token (if retrieved successfully) and any error messages.
+    """
+    
+    from github import Github
+
+    # First, try to get the GitHub token from the environment variable
+    github_token = os.environ.get("GITHUB_TOKEN")
+    if github_token:
+        # Test if the token works with GitHub
+        try:
+            g = Github(github_token)
+            g.get_user().login  # Attempt to retrieve the username to confirm token is valid
+            return {"token": github_token, "error": None}
+        except Exception as e:
+            error_message = f"Environment GitHub token failed: {e}"
+            logger.warning(error_message)
+            # Continue to attempt to retrieve from config if environment token fails
+
+    # If the environment variable fails, attempt to get the GitHub token from the configuration
+    try:
+        github_token = get_config_value("config", "GITHUB_API_TOKEN")
+        # Test if the new token works with GitHub
+        try:
+            g = Github(github_token)
+            g.get_user().login
+            return {"token": github_token, "error": None}
+        except Exception as e:
+            error_message = f"Config GitHub token failed: {e}"
+            logger.error(error_message)
+            return {"token": None, "error": error_message}
+    except Exception as e:
+        error_message = f"Failed to load GitHub token from config: {e}"
+        logger.error(error_message)
+        return {"token": None, "error": error_message}
+
+    # If no token could be retrieved
+    return {"token": None, "error": "GitHub token not available from both environment and config."}
+
+    
 # Response formatting
 def format_response(response):
     if response is None:

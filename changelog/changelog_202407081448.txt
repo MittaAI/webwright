@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-08 14:48:12
-### Changes
-Updated git_commit_and_push.py to clarify LLM usage and streamline changelog process
