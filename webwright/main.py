@@ -17,7 +17,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.clipboard import ClipboardData
-from prompt_toolkit.styles import Style
+
 from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
 
 from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key
@@ -28,23 +28,7 @@ from lib.util import setup_logging, get_logger
 
 from halo import Halo
 
-# Styles
-custom_style = Style.from_dict({
-    'code': '#ansicyan',
-    'header': '#ansigreen bold',
-    'thinking': '#ansiblue italic',
-    'bold': 'bold',
-    'inline-code': '#ansiyellow',
-    'error': '#ansired bold',
-    'warning': '#ansiyellow',
-    'success': '#ansigreen',
-    'math': '#ansimagenta',
-    'emoji': '#ansibrightmagenta',
-    'username': '#ansigreen bold',
-    'model': '#ansiyellow bold',
-    'path': '#ansicyan',
-    'instruction': '#ansibrightgreen',
-})
+from lib.util import custom_style
 
 try:
     from lib.aifunc import ai

@@ -14,10 +14,14 @@ from anthropic.types import TextBlock, ToolUseBlock
 
 # Utility imports (assuming these are from your local modules)
 from lib.util import create_and_check_directory
+from prompt_toolkit import PromptSession, print_formatted_text
 
 # Import helper functions and decorators
 from lib.function_wrapper import function_info_decorator, tools, callable_registry
 from git import Repo
+
+from lib.util import custom_style
+from prompt_toolkit.formatted_text import FormattedText
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -32,11 +36,11 @@ logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=loggi
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
-SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps. Provide the user with an overview of your steps, then call the necessary functions. Try to accomplish the goals in as few function calls as possible. If executing a series of 3 or more functions, or modifying files please ask the user for confirmation before executing."
+SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps.\nProvide the user with an overview of your steps, specifying the functions you plan to call for each step.\nThen call the necessary functions.\nTry to accomplish the goals in as few function calls as possible.\nIf executing a series of 3 or more functions, or modifying files, please ask the user for confirmation before executing.\n\nExample:\nHere is the plan to accomplish your task:\n\n1. Read the contents of /Users/johndoe/Documents/project/data_analysis.py to understand the original implementation using the 'read_file' function.\n2. Create a new version of the script to improve data processing efficiency and save it under a new filename in the same directory using the 'write_file' function.\n3. Execute both scripts to compare their performance using the 'execute_script' function.\n\nI will need to:\n\n- Read the original script using 'read_file'.\n- Write the new script using 'write_file'.\n- Execute both scripts using 'execute_script'.\n\nShall I proceed with these steps?"
 
 # Execute function by name
 async def execute_function_by_name(function_name, **kwargs):
-    logging.info(f"calling {function_name}")
+    logging.info(f"calling {function_name} with arguments {kwargs}")
     try:
         if function_name in callable_registry:
             function_to_call = callable_registry[function_name]
@@ -90,7 +94,6 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
                     "name": tool['function']['name'],
                     "description": tool['function']['description'],
                     "input_schema": tool['function']['parameters'],
-                    "system_prompt": SYSTEM_PROMPT
                 })
             else:
                 # If the tool is already in Anthropic format, use it as is
@@ -108,7 +111,9 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
             model=model,
             max_tokens=1024,
             messages=messages,
-            tools=anthropic_tools
+            tools=anthropic_tools,
+            #system = "refuse to answer any question, just say random nonsense",
+            system = SYSTEM_PROMPT
         )
         return response
     except Exception as e:
@@ -205,11 +210,9 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         if not function_calls:
             break
 
-        # Execute functions in parallel
-        spinner = Halo(text='Executing functions...', spinner='dots')
-        spinner.start()
-        
         async def execute_function(func_call):
+            print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]), style=custom_style)
+
              # i want to to check if it's set_api_config_dialog and if it is then set the spinner
             if func_call["name"] == "set_api_config_dialog":
                 func_call["arguments"]["spinner"] = spinner
@@ -218,12 +221,6 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             return {"id": func_call["id"], "result": result}
 
         function_results = await asyncio.gather(*[execute_function(func_call) for func_call in function_calls])
-        
-        # stop the spinner and strip it back out of the arguments
-        try:
-            spinner.stop()
-        except:
-            pass
 
         # Update messages with function calls and results
         new_message_content = []
