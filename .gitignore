@@ -40,4 +40,24 @@ ENV/
 env.bak/
 venv.bak/
 
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
 
+# Pytest-cov
+.coverage.*
+
+# PyCharm pytest integration
+.idea/pytest.xml
+
+# VSCode pytest integration
+.vscode/settings.json
