@@ -1,8 +1,8 @@
 import os
-import subprocess
 from github import Github
+from git import Repo  # Import from GitPython
 from lib.function_wrapper import function_info_decorator
-from lib.util import get_logger
+from lib.util import get_logger, get_github_token
 
 logger = get_logger()
 
@@ -26,30 +26,34 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
     :rtype: dict
     """
     try:
-        # Get the GitHub token from the environment variable
-        github_token = os.environ.get("GITHUB_TOKEN")
+        # Assuming the get_github_token function has been defined and imported as described in the previous message.
+
+        # Get the GitHub token
+        token_info = get_github_token()
+        github_token = token_info['token']
         if not github_token:
             return {
                 "success": False,
                 "error": "GitHub token not found",
-                "reason": "The 'GITHUB_TOKEN' environment variable is not set."
+                "reason": token_info['error'] or "Neither the 'GITHUB_TOKEN' environment variable nor the config provided a valid token."
             }
-        
+
         # Create a GitHub instance
         g = Github(github_token)
-        
-        # Get the repository name and organization/user from the remote URL
-        remote_url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"]).decode("utf-8").strip()
+
+        # Get the repository name and organization/user from the local Git configuration
+        repo = Repo(".")
+        remote_url = repo.remotes.origin.url
         repo_info = extract_repo_info(remote_url)
-        
+
         if repo_info:
             org_name, repo_name = repo_info
             logger.info(f"Organization/User: {org_name}")
             logger.info(f"Repository: {repo_name}")
-            
+
             # Get the repository
             repo = g.get_repo(f"{org_name}/{repo_name}")
-            
+
             if action == 'list':
                 # List issues in the repository based on the specified state
                 issues = repo.get_issues(state=state)
@@ -59,7 +63,7 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
                     "issues": issues_list,
                     "total_count": len(issues_list)
                 }
-            
+
             elif action == 'create':
                 # Validate required fields for create action
                 if not issue_title or not issue_body:
@@ -68,7 +72,7 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
                         "error": "Missing required fields",
                         "reason": "'issue_title' and 'issue_body' are required for creating an issue."
                     }
-                
+
                 # Create a new issue
                 issue = repo.create_issue(
                     title=issue_title,
@@ -80,7 +84,7 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
                     "issue_url": issue.html_url,
                     "issue_number": issue.number
                 }
-            
+
             elif action == 'comment':
                 # Validate required fields for comment action
                 if not issue_number or not comment_body:
@@ -89,7 +93,7 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
                         "error": "Missing required fields",
                         "reason": "'issue_number' and 'comment_body' are required for commenting on an issue."
                     }
-                
+
                 # Get the issue by number and add a comment
                 issue = repo.get_issue(issue_number)
                 issue.create_comment(body=comment_body)
@@ -99,7 +103,7 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
                     "issue_url": issue.html_url,
                     "issue_number": issue.number
                 }
-            
+
             elif action == 'close':
                 # Validate required field for close action
                 if not issue_number:
@@ -108,7 +112,7 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
                         "error": "Missing required field",
                         "reason": "'issue_number' is required for closing an issue."
                     }
-                
+
                 # Get the issue by number and close it
                 issue = repo.get_issue(issue_number)
                 issue.edit(state="closed")
@@ -134,13 +138,12 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
     except Exception as e:
         error_message = f"Failed to manage GitHub issues: {str(e)}"
         logger.info(error_message, exc_info=True)
-        
+
         return {
             "success": False,
             "error": "Failed to manage GitHub issues",
             "reason": str(e)
         }
-
 
 def extract_repo_info(remote_url):
     # Extract the organization/user and repository name from the remote URL

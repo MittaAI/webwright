@@ -1,24 +1,75 @@
-import subprocess
+import os
+from git import Repo
+from github import Github
 from lib.function_wrapper import function_info_decorator
+from lib.util import get_logger, get_github_token
+
+logger = get_logger()
 
 @function_info_decorator
 def git_diff() -> dict:
     """
-    Runs the 'git diff' command and captures the output.
-    We can use this to write a git commit message, which would get written to the github repo.
-    Shows the changes to all files changed in the repo.
+    Retrieves the diff of the current git repository and additional repository information.
+    Uses the GitHub token from environment or configuration to access GitHub repository details if available.
     
-    :return: A dictionary containing the success status and the diff output or error message.
+    :return: A dictionary containing the diff of the git repository, repository name, remote URL, and GitHub info if applicable.
     :rtype: dict
     """
     try:
-        result = subprocess.run(['git', 'diff'], capture_output=True, text=True, check=True)
-        return {
-            'success': True,
-            'diff_output': result.stdout
+        # Automatically detect the current repository path
+        repo = Repo(".")
+        git_diff_output = repo.git.diff()
+        git_status_output = repo.git.status()
+        remote_url = repo.remotes.origin.url if repo.remotes else "No remote URL"
+        org_name, repo_name = extract_repo_details(remote_url)
+        
+        response = {
+            "success": True,
+            "git_diff": git_diff_output,
+            "git_status": git_status_output,
+            "repository_name": repo_name,
+            "remote_url": remote_url
         }
-    except subprocess.CalledProcessError as e:
+
+        # Get the GitHub token from environment or configuration
+        token_info = get_github_token()
+        github_token = token_info.get('token')
+
+        if github_token:
+            g = Github(github_token)
+            if org_name and repo_name:
+                github_repo = g.get_repo(f"{org_name}/{repo_name}")
+                response['github_repo_url'] = github_repo.html_url
+            else:
+                logger.error("Failed to extract owner and repository name from remote URL.")
+        else:
+            logger.warning("GitHub token not found or invalid: " + token_info.get('error', 'No error message provided'))
+
+        return response
+    except Exception as e:
+        logger.error("Failed to retrieve git diff: " + str(e), exc_info=True)
         return {
-            'success': False,
-            'error': str(e)
+            "success": False,
+            "error": "Failed to retrieve git diff",
+            "reason": str(e)
         }
+
+def extract_repo_details(remote_url):
+    # Extract the organization/user and repository name from the remote URL
+    if remote_url.startswith("https://github.com/"):
+        org_repo = remote_url[len("https://github.com/"):] 
+    elif remote_url.startswith("git@github.com:"):
+        org_repo = remote_url[len("git@github.com:"):] 
+    else:
+        return None, None
+
+    org_repo = org_repo.strip()
+    if org_repo.endswith(".git"):
+        org_repo = org_repo[:-4]
+
+    parts = org_repo.split("/")
+    if len(parts) != 2:
+        return None, None
+
+    org_name, repo_name = parts
+    return org_name, repo_name

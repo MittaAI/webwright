@@ -1,34 +1,27 @@
 import os
 from git import Repo
+from github import Github
 from lib.function_wrapper import function_info_decorator
+from lib.util import get_logger, get_github_token
+
+logger = get_logger()
 
 @function_info_decorator
-def git_status(github_token: str = None) -> dict:
+def git_status() -> dict:
     """
     Retrieves the status of the current git repository and optionally the GitHub repository.
-
-    :param github_token: The GitHub token to use for accessing the repository. Defaults to None.
-    :type github_token: str
+    Uses the GitHub token from environment or configuration to access GitHub repository details if available.
+    
     :return: A dictionary containing the status of the git repository, repository name, and remote URL if applicable.
     :rtype: dict
     """
     try:
         # Automatically detect the current repository path
-        repo_path = os.getcwd()
-
-        # Initialize the repository
-        repo = Repo(repo_path)
-
-        # Get the git status
+        repo = Repo(".")
         git_status_output = repo.git.status()
-
-        # Get the repository name
-        repo_name = os.path.basename(repo_path)
-
-        # Get the remote URL
         remote_url = repo.remotes.origin.url if repo.remotes else "No remote URL"
-
-        # Prepare the response dictionary
+        org_name, repo_name = extract_repo_details(remote_url)
+        
         response = {
             "success": True,
             "git_status": git_status_output,
@@ -36,19 +29,46 @@ def git_status(github_token: str = None) -> dict:
             "remote_url": remote_url
         }
 
-        # If a GitHub token is provided, get the repository URL
+        # Get the GitHub token from environment or configuration
+        token_info = get_github_token()
+        github_token = token_info.get('token')
+
         if github_token:
-            from github import Github
-
             g = Github(github_token)
-            user = g.get_user()
-            github_repo = user.get_repo(repo_name)
-
-            response["github_repo_url"] = github_repo.html_url
+            if org_name and repo_name:
+                github_repo = g.get_repo(f"{org_name}/{repo_name}")
+                response['github_repo_url'] = github_repo.html_url
+            else:
+                logger.error("Failed to extract owner and repository name from remote URL.")
+        else:
+            logger.error("GitHub token not found or invalid: " + token_info.get('error', 'No error message provided'))
 
         return response
     except Exception as e:
+        logger.error("Failed to retrieve git status: " + str(e), exc_info=True)
         return {
             "success": False,
-            "error": str(e)
+            "error": "Failed to retrieve git status",
+            "reason": str(e)
         }
+
+
+def extract_repo_details(remote_url):
+    # Extract the organization/user and repository name from the remote URL
+    if remote_url.startswith("https://github.com/"):
+        org_repo = remote_url[len("https://github.com/"):] 
+    elif remote_url.startswith("git@github.com:"):
+        org_repo = remote_url[len("git@github.com:"):] 
+    else:
+        return None, None
+
+    org_repo = org_repo.strip()
+    if org_repo.endswith(".git"):
+        org_repo = org_repo[:-4]
+
+    parts = org_repo.split("/")
+    if len(parts) != 2:
+        return None, None
+
+    org_name, repo_name = parts
+    return org_name, repo_name

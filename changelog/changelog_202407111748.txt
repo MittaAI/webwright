@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-11 17:48:27
-### Changes
-Creating a new branch called kord-work for development tasks.

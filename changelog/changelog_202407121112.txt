@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-12 11:12:08
-### Changes
-Updated README.md with conda initialization instructions and added check_anaconda_powershell.py script

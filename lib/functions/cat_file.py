@@ -36,7 +36,7 @@ def cat_file(file_path: str) -> dict:
             }
         
         # Read the contents of the file
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             contents = file.read()
         
         return {
