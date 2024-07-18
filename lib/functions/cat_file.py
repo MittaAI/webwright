@@ -12,6 +12,20 @@ def cat_file(file_path: str) -> dict:
     :return: A dictionary containing the success status and the file contents or an error message.
     :rtype: dict
     """
+    if not isinstance(file_path, str):
+        return {
+            "success": False,
+            "error": "Invalid input",
+            "reason": f"Expected a string for file_path, got {type(file_path).__name__}"
+        }
+    
+    if not file_path:
+        return {
+            "success": False,
+            "error": "Invalid input",
+            "reason": "File path cannot be empty"
+        }
+
     try:
         # Check if the file exists
         if not os.path.isfile(file_path):
