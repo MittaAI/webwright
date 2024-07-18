@@ -1,9 +1,8 @@
-# lib/functions/write_code_to_file.py
 import os
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
-def write_code_to_file(file_path: str, code: str) -> dict:
+def write_code_to_file_patch(file_path: str, code: str) -> dict:
     """
     1. Writes code to a specified file, if the file doesn't exist. 
     2. If the file exists, refuses to update and suggests using create_code_diff_and_apply.
@@ -34,8 +33,8 @@ def write_code_to_file(file_path: str, code: str) -> dict:
         directory = os.path.dirname(file_path)
         os.makedirs(directory, exist_ok=True)
 
-        # Write the code to the file
-        with open(file_path, "w") as file:
+        # Write the code to the file with UTF-8 encoding
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write(code)
 
         return {
