@@ -12,6 +12,7 @@ import re
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog, yes_no_dialog
 from prompt_toolkit.application import Application
+from prompt_toolkit.styles import Style
 
 import logging
 
@@ -417,6 +418,24 @@ def format_response(response):
         formatted_text.append(('', '\n'))
     
     return FormattedText(formatted_text)
+
+# Styles
+custom_style = Style.from_dict({
+    'code': '#ansicyan',
+    'header': '#ansigreen bold',
+    'thinking': '#ansiblue italic',
+    'bold': 'bold',
+    'inline-code': '#ansiyellow',
+    'error': '#ansired bold',
+    'warning': '#ansiyellow',
+    'success': '#ansigreen',
+    'math': '#ansimagenta',
+    'emoji': '#ansibrightmagenta',
+    'username': '#ansigreen bold',
+    'model': '#ansiyellow bold',
+    'path': '#ansicyan',
+    'instruction': '#ansibrightgreen',
+})
 
 # Initialize configuration
 read_config()
