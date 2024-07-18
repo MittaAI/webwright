@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-15 15:38:44
-### Changes
-Modified lib/functions/browser.py

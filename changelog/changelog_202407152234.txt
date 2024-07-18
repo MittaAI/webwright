@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-15 22:34:53
-### Changes
-Staging changes and committing them.

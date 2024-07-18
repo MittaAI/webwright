@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-15 21:33:30
-### Changes
-Creating branch issue-25

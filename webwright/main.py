@@ -141,7 +141,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
     conversation_history = []  # Initialize conversation history
 
     while True:
-        # logger.info(f"Conversation history: {conversation_history}")
+        logger.info(f"Conversation history: {conversation_history}")
         try:
             current_path = os.getcwd().replace(os.path.expanduser('~'), '~')
             

@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-15 17:00:59
-### Changes
-Create a new branch for issue #34

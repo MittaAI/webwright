@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-08 14:50:15
-### Changes
-Renamed old changelog files from .log to changelog_*.txt and updated git_commit_and_push.py to reflect the changes
