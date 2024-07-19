@@ -1,5 +1,6 @@
 gitpython
 prompt_toolkit
+beautifulsoup4
 coolname
 pygments
 openai
