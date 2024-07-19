@@ -28,7 +28,7 @@ from lib.util import setup_logging, get_logger
 
 from halo import Halo
 
-from custom_style import custom_style
+from lib.util import custom_style
 
 try:
     from lib.aifunc import ai
