@@ -1,11 +1,11 @@
 import os
 import subprocess
 import re
-from lib.util import setup_logging, get_logger
+from lib.util import setup_main_logging, get_logger
 from lib.function_wrapper import function_info_decorator
 
 # Initialize logging
-logger = setup_logging()
+logger = setup_main_logging()
 
 @function_info_decorator
 def manage_app_container(action: str, app_path: str, port: int, docker_compose: bool = False) -> dict:

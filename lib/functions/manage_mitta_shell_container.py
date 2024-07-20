@@ -2,11 +2,11 @@ import os
 import subprocess
 import shutil
 import pkg_resources
-from lib.util import setup_logging, get_logger
+from lib.util import setup_main_logging, get_logger
 from lib.function_wrapper import function_info_decorator
 
 # Initialize logging
-logger = setup_logging()
+logger = setup_main_logging()
 
 # This decorator registers the function into a wider package
 # @function_info_decorator

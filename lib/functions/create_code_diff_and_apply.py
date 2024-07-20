@@ -75,10 +75,6 @@ def create_code_diff_and_apply(diff: str, file_path: str, block_delimiter: str =
                     del modified_lines[line_number - 1]
                 prev_op = op
 
-                # FOR TESTING
-                with open(new_file_path, 'w', encoding='utf-8') as file:
-                    file.writelines(modified_lines)
-
             # Write the modified content back to the file
             #with open(file_path, 'w', encoding='utf-8') as file:
             with open(new_file_path, 'w', encoding='utf-8') as file:
