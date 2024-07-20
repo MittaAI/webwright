@@ -4,11 +4,9 @@ from lib.function_wrapper import function_info_decorator
 @function_info_decorator
 def write_code_to_file_patch(file_path: str, code: str) -> dict:
     """
-    1. Writes code to a specified file, if the file doesn't exist. 
-    2. If the file exists, refuses to update and suggests using create_code_diff_and_apply.
+    1. Writes code to a specified file, only if the file doesn't exist. 
+    2. If the file exists, refuses to update and suggests using apply_code_diff_to_file.
     3. If the file_path is just a file name, it defaults to the current directory.
-    You can use matplot to do graphs, but they should be run with run_python_file_non_blocking
-    If you write code, you should offer to show it. If it's short, you can show it before asking.
     
     :param file_path: The path of the file to write the code to.
     :type file_path: str

@@ -5,6 +5,7 @@ import string
 import random
 from configparser import ConfigParser
 import getpass
+from datetime import datetime
 
 from coolname import generate_slug
 
@@ -15,6 +16,7 @@ from prompt_toolkit.application import Application
 from prompt_toolkit.styles import Style
 
 import logging
+import hashlib
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -80,6 +82,45 @@ def create_and_check_directory(directory_path):
             logger.error(f"Error: The directory '{directory_path}' was not found after creation attempt.")
     except Exception as e:
         logger.error(f"An error occurred while creating the directory: {e}")
+
+def ensure_diff_dir_exists():
+    """Ensure that the diff directory exists within the .webwright folder."""
+    diff_dir = os.path.join(webwright_dir, 'diffs')
+    create_and_check_directory(diff_dir)
+    return diff_dir
+
+def store_diff(diff: str, file_path: str):
+    """
+    Store the generated diff for a given file in the diffs directory.
+    The stored diff filename includes a timestamp and the hash of the original file.
+    
+    :param diff: The generated diff content.
+    :param file_path: The path of the file the diff is associated with.
+    :return: The path where the diff file was stored, or None if there was an error.
+    :rtype: str or None
+    """
+    diff_dir = ensure_diff_dir_exists()
+    
+    # Calculate the hash of the original file
+    file_hash = calculate_file_hash(file_path)
+    if file_hash is None:
+        logger.error(f"Failed to calculate hash for {file_path}. Cannot store diff.")
+        return None
+
+    # Generate a unique filename for the diff
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = os.path.basename(file_path)
+    diff_file_name = f"{file_name}_{timestamp}_{file_hash}.diff"
+    diff_file_path = os.path.join(diff_dir, diff_file_name)
+    
+    try:
+        with open(diff_file_path, 'w') as f:
+            f.write(diff)
+        logger.info(f"Diff stored for {file_path} at {diff_file_path}")
+        return diff_file_path
+    except Exception as e:
+        logger.error(f"Error storing diff for {file_path}: {str(e)}")
+        return None
 
 def extract_urls(query):
     url_pattern = re.compile(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+')
@@ -180,6 +221,58 @@ def setup_ssh_key():
     
     configure_git_ssh(ssh_key_path)
     return ssh_key_path
+
+###############################################################################
+#                                Gemini Setup                                 #
+###############################################################################
+import google.generativeai as genai
+from prompt_toolkit.shortcuts import input_dialog
+
+def check_gemini_token(gemini_token):
+    try:
+        genai.configure(api_key=gemini_token)
+
+        model = genai.GenerativeModel('gemini-1.5-flash')
+
+        prompt = "Confirm the token is working."
+        response = model.generate_content(prompt)
+
+        print("Gemini API token verified successfully.")
+        return True
+
+    except Exception as e:
+        print(f"Error verifying Gemini API token: {str(e)}")
+        return False
+
+def get_gemini_api_key():
+    gemini_token = os.getenv("GEMINI_API_KEY") or get_config_value("config", "GEMINI_API_KEY")
+
+    if gemini_token == "NONE":
+        return None
+    
+    if gemini_token and check_gemini_token(gemini_token):
+        return gemini_token
+
+    gemini_token = input_dialog(
+        title="Gemini API Key",
+        text="Enter your Gemini API key (Enter to skip):"
+    ).run()
+
+    if gemini_token == '':  # User hit Enter without providing a token
+        print("Gemini token entry cancelled.")
+        set_config_value("config", "GEMINI_API_KEY", "NONE")
+        return None
+    
+    if gemini_token:
+        if check_gemini_token(gemini_token):
+            set_config_value("config", "GEMINI_API_KEY", gemini_token)
+            return gemini_token
+        else:
+            print("Invalid Gemini token. Skipping.")
+    return None
+
+def set_gemini_api_key(api_key):
+    set_config_value("config", "GEMINI_API_KEY", api_key)
 
 ###############################################################################
 #                                OpenAI Setup                                 #
@@ -403,7 +496,19 @@ def get_github_token():
     # If no token could be retrieved
     return {"token": None, "error": "GitHub token not available from both environment and config."}
 
-    
+def calculate_file_hash(file_path):
+    """Calculate the SHA-256 hash of a file."""
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(file_path, "rb") as f:
+            # Read and update hash in chunks of 4K
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+    except Exception as e:
+        logger.error(f"Error calculating hash for {file_path}: {str(e)}")
+        return None
+
 # Response formatting
 def format_response(response):
     if response is None:

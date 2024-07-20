@@ -38,17 +38,24 @@ UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
 SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps.\nProvide the user with an overview of your steps, specifying the functions you plan to call for each step.\nThen call the necessary functions.\nTry to accomplish the goals in as few function calls as possible.\nIf executing a series of 3 or more functions, or modifying files, please ask the user for confirmation before executing.\n\nExample:\nHere is the plan to accomplish your task:\n\n1. Read the contents of /Users/johndoe/Documents/project/data_analysis.py to understand the original implementation using the 'read_file' function.\n2. Create a new version of the script to improve data processing efficiency and save it under a new filename in the same directory using the 'write_file' function.\n3. Execute both scripts to compare their performance using the 'execute_script' function.\n\nI will need to:\n\n- Read the original script using 'read_file'.\n- Write the new script using 'write_file'.\n- Execute both scripts using 'execute_script'.\n\nShall I proceed with these steps?"
 
-# Execute function by name
 async def execute_function_by_name(function_name, **kwargs):
-    logging.info(f"calling {function_name} with arguments {kwargs}")
+    logging.info(f"Calling {function_name} with arguments {kwargs}")
     try:
         if function_name in callable_registry:
             function_to_call = callable_registry[function_name]
-            result = await function_to_call(**kwargs) if asyncio.iscoroutinefunction(function_to_call) else function_to_call(**kwargs)
+            
+            if asyncio.iscoroutinefunction(function_to_call):
+                # If it's a coroutine function, await it
+                result = await function_to_call(**kwargs)
+            else:
+                # If it's a regular function, run it in a thread to avoid blocking
+                result = await asyncio.to_thread(function_to_call, **kwargs)
+            
             return json.dumps(result) if not isinstance(result, str) else result
         else:
             raise ValueError(f"Function {function_name} not found in registry")
     except Exception as e:
+        logging.error(f"Error executing function {function_name}: {str(e)}", exc_info=True)
         return json.dumps({"error": str(e)})
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
