@@ -1,6 +1,6 @@
 import unittest
 import os
-from lib.functions.scan_html_code_patch import analyze_html_file
+from lib.functions.scan_html_code import analyze_html_file
 
 
 class TestHTMLScanner(unittest.TestCase):

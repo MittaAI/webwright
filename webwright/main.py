@@ -141,7 +141,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
     conversation_history = []  # Initialize conversation history
 
     while True:
-        logger.info(f"Conversation history: {conversation_history}")
+        # logger.info(f"Conversation history: {conversation_history}")
         try:
             current_path = os.getcwd().replace(os.path.expanduser('~'), '~')
             
@@ -159,7 +159,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
             
             if question.strip().lower() in ['quit', 'exit']:
                 print("system> Bye!")
-                sys.exit()
+                return
             
             conversation_history.append({"role": "user", "content": question})
             # logger.info(f"Main: Added user message to history. Current history: {conversation_history}")
@@ -202,35 +202,21 @@ def entry_point():
     # Clear the screen
     os.system('cls' if os.name == 'nt' else 'clear')
 
-    # setup
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
-    # Set the custom exception handler
     loop.set_exception_handler(custom_exception_handler)
 
     try:
         loop.run_until_complete(main(openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use))
-
     except KeyboardInterrupt:
-        print("system> KeyboardInterrupt received, cancelling tasks...")
-        tasks = [task for task in asyncio.all_tasks(loop) if not task.done()]
-        for task in tasks:
-            task.cancel()
-        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-        loop.run_until_complete(loop.shutdown_asyncgens())
-    except OSError as e:
-        if e.winerror == 10038:
-            print_formatted_text(FormattedText([('class:error', f"system> Handled WinError 10038: {str(e)}")]), style=custom_style)
-            logger.error(f"Handled WinError 10038: {str(e)}")
-        else:
-            raise
-    except Exception as e:
-        print(f"system> Error during shutdown: {str(e)}")
-        logger.error(f"Error during shutdown: {str(e)}")
-        logger.error(traceback.format_exc())
+        print("system> KeyboardInterrupt received, shutting down...")
     finally:
-        print("system> Closing event loop.")
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+        
+        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+        loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
         print_formatted_text(FormattedText([('class:success', "system> Shutdown complete.")]), style=custom_style)
 
