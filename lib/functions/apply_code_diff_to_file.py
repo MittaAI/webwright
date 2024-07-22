@@ -12,10 +12,31 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 logger = logging.getLogger(__name__)
 
 def extract_code_from_markdown(content):
-    """Extract code from markdown-style Python code blocks."""
-    if content.startswith("```python") and content.endswith("```"):
-        return content[9:-3].strip()
-    return content
+    """
+    Extract code from markdown-style code blocks, including the language type if specified.
+    
+    :param content: The markdown content containing code blocks.
+    :return: A tuple containing the extracted code and the language type (if specified).
+    """
+    lines = content.split('\n')
+    in_code_block = False
+    code_lines = []
+    language = None
+    
+    for line in lines:
+        if line.startswith('```'):
+            if not in_code_block:
+                # Check for language specification
+                lang_spec = line[3:].strip()
+                if lang_spec:
+                    language = lang_spec
+            in_code_block = not in_code_block
+            continue
+        if in_code_block:
+            code_lines.append(line)
+    
+    extracted_code = '\n'.join(code_lines) if code_lines else content
+    return extracted_code, language
 
 def generate_diff(old_content, new_content, file_path):
     """Generate a proper unified diff between old and new content."""
@@ -104,7 +125,7 @@ Please provide the updated file content after applying the pseudo diff. Return o
         response = model.generate_content(prompt)
         
         # Extract the updated file content from the response and remove code blocks if present
-        updated_content = extract_code_from_markdown(response.text.strip())
+        updated_content, language = extract_code_from_markdown(response.text.strip())
         
         # Generate a new diff
         new_diff = generate_diff(original_content, updated_content, file_path)
@@ -121,7 +142,8 @@ Please provide the updated file content after applying the pseudo diff. Return o
             "message": f"Diff applied, changes made to the file, and new diff stored at {diff_file_path}.",
             "suggested_changes": updated_content,
             "new_diff": new_diff,
-            "diff_file_path": diff_file_path
+            "diff_file_path": diff_file_path,
+            "language": language
         }
     except Exception as e:
         logger.error(f"Error in apply_code_diff_to_file: {str(e)}")
