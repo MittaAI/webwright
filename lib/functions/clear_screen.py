@@ -51,7 +51,17 @@ def clear_screen(cowsay_option: bool = False) -> Dict[str, str]:
                     "The more people I meet, the more I love my dog.",
                     "Barking up the wrong tree.",
                     "Happiness is a warm puppy.",
-                    "Home is where the dog is."
+                    "Home is where the dog is.",
+                    "Cats rule, dogs drool.",
+                    "A cat a day keeps the doctor away.",
+                    "Time spent with cats is never wasted.",
+                    "Cats leave paw prints on your heart.",
+                    "In ancient times cats were worshipped as gods; they have not forgotten this.",
+                    "Cats are connoisseurs of comfort.",
+                    "A meow massages the heart.",
+                    "Cats are not our whole life, but they make our lives whole.",
+                    "The smallest feline is a masterpiece.",
+                    "Cats have it all: admiration, an endless sleep, and company only when they want it."
                 ]
                 import random
                 cowsay.cow(random.choice(sayings))
