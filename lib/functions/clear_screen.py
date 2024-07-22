@@ -47,27 +47,11 @@ def clear_screen(cowsay_option: bool = False) -> Dict[str, str]:
                     "Real programmers count from 0.",
                     "Code, sleep, repeat!",
                     "Error 404: Coffee not found.",
-                    "I'm not a cat person, but I'm a person who loves cats.",
-                    "Cats rule the world!",
-                    "I can't have kids, my cat is allergic.",
-                    "Cats are the purrfect companions.",
-                    "To err is human, to purr is feline.",
-                    "Time spent with cats is never wasted.",
-                    "I work hard so my cat can have a better life.",
-                    "All you need is love and a cat.",
-                    "Cats are connoisseurs of comfort.",
-                    "A cat is a puzzle for which there is no solution.",
-                    "In ancient times cats were worshipped as gods; they have not forgotten this.",
                     "Every dog has its day.",
                     "The more people I meet, the more I love my dog.",
                     "Barking up the wrong tree.",
                     "Happiness is a warm puppy.",
-                    "Home is where the dog is.",
-                    "Cats have it all – admiration, an endless sleep, and company only when they want it.",
-                    "The smallest feline is a masterpiece.",
-                    "Time spent with cats is never wasted.",
-                    "One cat just leads to another.",
-                    "Cats leave paw prints in your heart."
+                    "Home is where the dog is."
                 ]
                 import random
                 cowsay.cow(random.choice(sayings))
