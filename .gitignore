@@ -61,3 +61,4 @@ pytestdebug.log
 
 # VSCode pytest integration
 .vscode/settings.json
+.aider*

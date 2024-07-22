@@ -30,7 +30,7 @@ def generate_diff(old_content, new_content, file_path):
     return ''.join(diff)
 
 @function_info_decorator
-def apply_code_diff_to_file(diff: str, update_query: str, file_path: str) -> dict:
+def apply_code_diff_to_file(diff: str, update_query: str, file_path: str, override_length_limit: bool = False) -> dict:
     """
     Applies a code pseudo diff to a file using Gemini AI for analysis and suggestion.
     
@@ -46,6 +46,8 @@ def apply_code_diff_to_file(diff: str, update_query: str, file_path: str) -> dic
     :type update_query: str
     :param file_path: The path to the file where the changes should be applied.
     :type file_path: str
+    :param override_length_limit: A flag to override the length limit check. Default is False.
+    :type override_length_limit: bool
     :return: A dictionary containing the result of the operation. It includes:
              - 'status': 'success' if the operation was successful, otherwise not present.
              - 'message': A description of the action taken.
@@ -76,9 +78,9 @@ def apply_code_diff_to_file(diff: str, update_query: str, file_path: str) -> dic
         with open(file_path, 'r', encoding='utf-8') as file:
             original_content = file.read()
 
-        # Check if the diff is within 50% of the original file content length
-        if len(original_content) > 1024 and len(diff) > len(original_content) * 0.5:
-            return {"error": "Diff size is too large compared to the original file content. As the LLM isn't paying attention to the tool use, we'll remind it that it needs to use + or - in front of the changes, and not give us code blocks that aren't changes (other than reference to changes)."}
+        # Check if the diff is within 90% of the original file content length, unless override_length_limit is True
+        if not override_length_limit and len(original_content) > 1024 and len(diff) > len(original_content) * 0.90:
+            return {"error": "Diff size is too large compared to the original file content. As the LLM isn't paying attention to the tool use, we'll remind it that it needs to use + or - in front of the changes, and not give us code blocks that aren't changes (other than reference to changes). If you want to override this limit, set override_length_limit to True."}
 
         # Configure Gemini
         genai.configure(api_key=gemini_api_key)
