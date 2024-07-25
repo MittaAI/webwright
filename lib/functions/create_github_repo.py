@@ -1,6 +1,7 @@
 import os
 from github import Github
 from lib.function_wrapper import function_info_decorator
+from lib.config import Config
 
 @function_info_decorator
 def create_github_repo(repo_name: str, description: str, readme_content: str, license: str = "bsd-3-clause") -> dict:
@@ -19,8 +20,9 @@ def create_github_repo(repo_name: str, description: str, readme_content: str, li
     :rtype: dict
     """
     try:
+        config = Config()
         # Get the GitHub token from the environment variable
-        github_token = os.environ.get("GITHUB_TOKEN")
+        github_token = config.get_github_token()
         if not github_token:
             return {
                 "success": False,
@@ -29,7 +31,7 @@ def create_github_repo(repo_name: str, description: str, readme_content: str, li
             }
 
         # Create a GitHub instance
-        g = Github(github_token)
+        g = Github(github_token.get('token'))
 
         # Get the authenticated user
         user = g.get_user()

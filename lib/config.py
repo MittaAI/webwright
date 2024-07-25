@@ -418,7 +418,6 @@ Host {git_host}
         
     def get_github_token(self):
         try:
-            print("using config")
             github_token = self.get_config_value("config", "GITHUB_API_KEY")
 
             if github_token:
@@ -433,7 +432,6 @@ Host {git_host}
             logger.error(error_message)
 
         try:
-            print("using env")
             github_token = os.environ.get("GITHUB_TOKEN")
         
             if github_token:
