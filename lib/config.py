@@ -374,7 +374,7 @@ class Config:
 
         logger.info("Available SSH keys:")
         for i, key in enumerate(keys, start=1):
-            logger.info(f"{i}. {key}")
+            print(f"{i}. {key}")
 
         while True:
             try:
