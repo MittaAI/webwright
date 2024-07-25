@@ -245,12 +245,7 @@ class Config:
                 else:
                     return self.determine_api_to_use()
             except RuntimeError as e:
-                if "Event loop is closed" in str(e):
-                    application = Application()
-                    application.run()
-                    return self.determine_api_to_use()
-                else:
-                    raise
+                return None, None, None, None
 
         if len(available_apis) == 1:
             choice = available_apis[0][0]
