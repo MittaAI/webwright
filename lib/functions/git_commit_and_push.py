@@ -1,7 +1,8 @@
 from git import Repo
 from github import Github
 from lib.function_wrapper import function_info_decorator
-from lib.util import get_logger, get_github_token
+from lib.util import get_logger
+from lib.config import Config
 
 logger = get_logger()
 
@@ -24,6 +25,9 @@ def git_commit_and_push(commit_message: str, branch_name: str = None, pr_title: 
     :return: A dictionary containing the status of the commit, push, and pull request operation.
     :rtype: dict
     """
+    
+    config = Config()
+    
     try:
         # Initialize the repository
         repo = Repo(".")
@@ -63,7 +67,7 @@ def git_commit_and_push(commit_message: str, branch_name: str = None, pr_title: 
             }
 
             # Get the GitHub token from environment or configuration
-            token_info = get_github_token()
+            token_info = config.get_github_token()
             github_token = token_info.get('token')
 
             # Create a pull request if a GitHub token is provided and pr_title is set

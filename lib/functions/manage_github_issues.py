@@ -2,7 +2,8 @@ import os
 from github import Github
 from git import Repo  # Import from GitPython
 from lib.function_wrapper import function_info_decorator
-from lib.util import get_logger, get_github_token
+from lib.util import get_logger
+from lib.config import Config
 
 logger = get_logger()
 
@@ -25,11 +26,13 @@ def manage_github_issues(action: str, issue_number: int = None, issue_title: str
     :return: A dictionary containing the status of the operation and additional information.
     :rtype: dict
     """
+    config = Config()
+
     try:
         # Assuming the get_github_token function has been defined and imported as described in the previous message.
 
         # Get the GitHub token
-        token_info = get_github_token()
+        token_info = config.get_github_token()
         github_token = token_info['token']
         if not github_token:
             return {

@@ -1,33 +1,19 @@
-# Test header
-# This is a test modification of the main.py file
-
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
-
 import traceback
 import asyncio
 
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.history import FileHistory
-from prompt_toolkit.formatted_text import FormattedText, PygmentsTokens
+from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.keys import Keys
-from prompt_toolkit.filters import Condition
 from prompt_toolkit.clipboard import ClipboardData
 
-from lib.util import setup_ssh_key 
-from lib.util import select_openai_model, select_anthropic_model
-from lib.util import get_username
-from lib.util import format_response
-from lib.util import determine_api_to_use
-from lib.util import get_logger
-
-from halo import Halo
-
-from lib.util import custom_style
+from lib.config import Config
+from lib.util import format_response, get_logger, custom_style
 
 try:
     from lib.aifunc import ai
@@ -58,13 +44,15 @@ os.makedirs(webwright_dir, exist_ok=True)
 # Setup logging
 logger = get_logger()
 
+# Initialize Config
+config = Config()
+
 # User
-username = get_username()
+username = config.get_username()
 
 # Key bindings
 bindings = KeyBindings()
 
-# Intercept Ctrl+V
 @bindings.add('c-v')
 def _(event):
     print("system> Use mouse right-click to paste.")
@@ -78,7 +66,6 @@ history = FileHistory(history_file)
 session = PromptSession(history=history, key_bindings=bindings)
 
 def custom_exception_handler(loop, context):
-    # Extract the exception
     exception = context.get("exception")
     
     if exception:
@@ -86,19 +73,17 @@ def custom_exception_handler(loop, context):
     else:
         logger.error(f"Caught error: {context['message']}")
 
-    # Log the exception and prevent the program from crashing
     print(f"Unhandled exception: {exception}")
     print("Press ENTER to continue...")
 
-    # Optionally: Handle specific exceptions
     if isinstance(exception, OSError) and exception.winerror == 10038:
         print("Handled WinError 10038")
     else:
         loop.default_exception_handler(context)
 
-async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, api_to_use, model_to_use):
+async def process_shell_query(username, query, config, conversation_history):
     try:
-        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use, model_to_use=model_to_use, history=conversation_history)
+        success, results = await ai(username=username, query=query, config=config, history=conversation_history)
         
         logger.debug(f"AI response: {results}")
 
@@ -135,14 +120,26 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
         logger.error(traceback.format_exc())
         return False, {"error": error_message}
 
-
-async def main(openai_token, anthropic_token, api_to_use="openai", model_to_use=None):
-    conversation_history = []  # Initialize conversation history
+async def main(config):
+    conversation_history = []
+    username = config.get_username()
 
     while True:
-        # logger.info(f"Conversation history: {conversation_history}")
         try:
+            # Reload the configuration at the start of each loop
+            config.reload_config()
+
             current_path = os.getcwd().replace(os.path.expanduser('~'), '~')
+            
+            # Fetch the latest API and model information
+            api_to_use = config.get_config_value("config", "PREFERRED_API")
+            if api_to_use == "openai":
+                model_to_use = config.get_config_value("config", "OPENAI_MODEL")
+            elif api_to_use == "anthropic":
+                model_to_use = config.get_config_value("config", "ANTHROPIC_MODEL")
+            else:
+                api_to_use = "unknown"
+                model_to_use = "unknown"
             
             prompt_text = [
                 ('class:username', f"{username}@"),
@@ -152,7 +149,6 @@ async def main(openai_token, anthropic_token, api_to_use="openai", model_to_use=
 
             question = await session.prompt_async(FormattedText(prompt_text), style=custom_style)
 
-            # Check if the question is empty (user just hit enter)
             if question.strip() == "":
                 continue
             
@@ -161,17 +157,15 @@ async def main(openai_token, anthropic_token, api_to_use="openai", model_to_use=
                 return
             
             conversation_history.append({"role": "user", "content": question})
-            # logger.info(f"Main: Added user message to history. Current history: {conversation_history}")
             
-            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, api_to_use, model_to_use)
+            success, results = await process_shell_query(username, question, config, conversation_history)
             
             if success and "explanation" in results:
                 formatted_response = format_response(results['explanation'])
                 print_formatted_text(formatted_response, style=custom_style)
                 conversation_history.append({"role": "assistant", "content": results["explanation"]})
-                # logger.info(f"Main: Added assistant response to history. Current history: {conversation_history}")
             elif not success and "error" in results:
-                # Error messages are now handled in process_shell_query, so we don't need to print them here
+                # Error messages are already handled in process_shell_query
                 pass
             else:
                 print_formatted_text(FormattedText([('class:error', "system> An unexpected error occurred.")]), style=custom_style)
@@ -181,10 +175,9 @@ async def main(openai_token, anthropic_token, api_to_use="openai", model_to_use=
             logger.error(f"Error: {str(e)}")
             logger.error(traceback.format_exc())
 
-
 def entry_point():
-    # Get configs
-    api_to_use, openai_token, anthropic_token, model_to_use = determine_api_to_use()
+    config = Config()
+    api_to_use, openai_token, anthropic_token, model_to_use = config.determine_api_to_use()
 
     if api_to_use is None:
         print("No API selected. Exiting program.")
@@ -196,19 +189,7 @@ def entry_point():
         print("Use OPENAI_API_KEY for OpenAI or ANTHROPIC_API_KEY for Anthropic.")
         sys.exit(1)
     
-    # If using OpenAI, set the model
-    if openai_token and model_to_use is None:
-        selected_model = select_openai_model(api_key=openai_token)
-        if selected_model:
-            model_to_use = selected_model
-
-    # If using OpenAI, set the model
-    if anthropic_token and model_to_use is None:
-        selected_model = select_anthropic_model(api_key=anthropic_token)
-        if selected_model:
-            model_to_use = selected_model
-
-    setup_ssh_key()
+    config.setup_ssh_key()
 
     # Clear the screen
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -218,7 +199,7 @@ def entry_point():
     loop.set_exception_handler(custom_exception_handler)
 
     try:
-        loop.run_until_complete(main(openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use, model_to_use=model_to_use))
+        loop.run_until_complete(main(config))
     except KeyboardInterrupt:
         print("system> KeyboardInterrupt received, shutting down...")
     finally:

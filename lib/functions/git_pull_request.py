@@ -1,7 +1,8 @@
 from git import Repo
 from github import Github
 from lib.function_wrapper import function_info_decorator
-from lib.util import get_logger, get_github_token
+from lib.util import get_logger
+from lib.config import Config
 
 logger = get_logger()
 
@@ -19,6 +20,9 @@ def git_pull_request(pr_title: str, pr_body: str = None, branch_name: str = None
     :return: A dictionary containing the status and any relevant details of the operation.
     :rtype: dict
     """
+
+    config = Config()
+
     try:
         # Initialize the repository
         repo = Repo(".")
@@ -30,14 +34,13 @@ def git_pull_request(pr_title: str, pr_body: str = None, branch_name: str = None
         branch_name = branch_name or current_branch.name
         
         # Get the GitHub token from environment or configuration
-        token_info = get_github_token()
-        github_token = token_info.get('token')
+        github_token = config.get_github_token()
         
         if not github_token:
             return {"success": False, "error": "GitHub token not found or invalid. Pull request not created."}
         
         # Initialize GitHub API client
-        g = Github(github_token)
+        g = Github(github_token.get('token'))
         
         # Extract repository details from the remote URL
         remote_url = repo.remotes.origin.url

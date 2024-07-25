@@ -1,12 +1,9 @@
-import asyncio
 import logging
 import google.generativeai as genai
 from lib.function_wrapper import function_info_decorator
-from lib.util import get_gemini_api_key, store_diff
+from lib.util import store_diff
 import difflib
-from lib.util import calculate_file_hash
-import datetime
-import os
+from lib.config import Config
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -84,9 +81,11 @@ def apply_code_diff_to_file(diff: str, update_query: str, file_path: str, overri
     the get_gemini_api_key() function. If the API key is not available, the function 
     will return an error message.
     """
+    config = Config()
+
     try:
         # Get Gemini API key
-        gemini_api_key = get_gemini_api_key()
+        gemini_api_key = config.get_gemini_api_key()
         if not gemini_api_key:
             logger.warning("Gemini API key not available. Some functionality may be limited.")
             return {"error": "Gemini API key not available"}
