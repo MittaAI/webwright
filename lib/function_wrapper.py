@@ -2,11 +2,14 @@ import ast
 import inspect
 import os
 import importlib.util
-import logging
 import asyncio
 
 tools = []  # A registry to hold all decorated functions' info
 callable_registry = {}  # A registry to hold the functions themselves
+
+# Set up logging
+from lib.util import get_logger
+logger = get_logger()
 
 class FunctionWrapper:
     def __init__(self, func):
@@ -114,9 +117,9 @@ def load_functions_from_directory(directory):
                 for attr in dir(module):
                     func = getattr(module, attr)
                     if callable(func) and hasattr(func, 'function_info'):
-                        logging.info(f"Loaded function: {attr}")
+                        logger.info(f"Loaded function: {attr}")
             except Exception as e:
-                logging.error(f"Failed to load module {module_name}: {e}")
+                logger.error(f"Failed to load module {module_name}: {e}")
 
 # Load all functions from the lib/functions directory
 functions_directory = os.path.join(os.path.dirname(__file__), 'functions')

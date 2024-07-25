@@ -30,10 +30,12 @@ CONFIG_FILE_PATH = os.path.join(CONFIG_DIR, "webwright_config")
 # Initialize configuration parser
 config = ConfigParser()
 
-def setup_logging(log_level=logging.INFO):
-    log_dir = os.path.join(webwright_dir, 'logs')
-    os.makedirs(log_dir, exist_ok=True)
-    
+# log dir setup
+log_dir = os.path.join(webwright_dir, 'logs')
+func_log_dir = os.path.join(log_dir, 'function_logs')
+
+os.makedirs(log_dir, exist_ok=True)
+def setup_main_logging(log_level=logging.INFO):
     logging.basicConfig(
         level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -41,13 +43,39 @@ def setup_logging(log_level=logging.INFO):
             logging.FileHandler(os.path.join(log_dir, 'webwright.log'), encoding='utf-8'),
         ]
     )
-    
     return logging.getLogger(__name__)
 
 def get_logger():
     return logging.getLogger(__name__)
 
-logger = setup_logging()
+# make sure the logs directory exists
+
+os.makedirs(func_log_dir, exist_ok=True)
+def setup_function_logging(function_name, log_level=logging.INFO):
+    # Create a logger for the specific function
+    logger = logging.getLogger(function_name)
+    logger.setLevel(log_level)
+
+    # Check if the logger already has handlers to prevent adding them multiple times
+    if not logger.handlers:
+        # Create file handler which logs even debug messages
+        fh = logging.FileHandler(os.path.join(func_log_dir, f'{function_name}.log'), encoding='utf-8')
+        fh.setLevel(log_level)
+
+        # Create formatter and add it to the handlers
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+
+        # Add the handlers to the logger
+        logger.addHandler(fh)
+
+    return logger
+
+if __name__ == "__main__":
+    test_logger = setup_function_logging("test")
+    test_logger.info("This is a test log message.")
+
+logger = setup_main_logging()
 
 def ensure_config_dir_exists():
     if not os.path.exists(CONFIG_DIR):

@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import asyncio
 from tenacity import retry, wait_random_exponential, stop_after_attempt
@@ -15,6 +14,8 @@ from anthropic.types import TextBlock, ToolUseBlock
 # Utility imports (assuming these are from your local modules)
 from lib.util import create_and_check_directory
 from prompt_toolkit import PromptSession, print_formatted_text
+from lib.util import get_logger
+from lib.util import setup_function_logging
 
 # Import helper functions and decorators
 from lib.function_wrapper import function_info_decorator, tools, callable_registry
@@ -23,14 +24,13 @@ from git import Repo
 from lib.util import custom_style
 from prompt_toolkit.formatted_text import FormattedText
 
+
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
 os.makedirs(webwright_dir, exist_ok=True)
 
 # Configure logging
-log_dir = os.path.join(webwright_dir, 'logs')
-os.makedirs(log_dir, exist_ok=True)
-logging.basicConfig(filename=os.path.join(log_dir, 'webwright.log'), level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = get_logger()
 
 # Storage
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -39,23 +39,29 @@ UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps.\nProvide the user with an overview of your steps, specifying the functions you plan to call for each step.\nThen call the necessary functions.\nTry to accomplish the goals in as few function calls as possible.\nIf executing a series of 3 or more functions, or modifying files, please ask the user for confirmation before executing.\n\nExample:\nHere is the plan to accomplish your task:\n\n1. Read the contents of /Users/johndoe/Documents/project/data_analysis.py to understand the original implementation using the 'read_file' function.\n2. Create a new version of the script to improve data processing efficiency and save it under a new filename in the same directory using the 'write_file' function.\n3. Execute both scripts to compare their performance using the 'execute_script' function.\n\nI will need to:\n\n- Read the original script using 'read_file'.\n- Write the new script using 'write_file'.\n- Execute both scripts using 'execute_script'.\n\nShall I proceed with these steps?"
 
 async def execute_function_by_name(function_name, **kwargs):
-    logging.info(f"Calling {function_name} with arguments {kwargs}")
+    logger.info(f"Calling {function_name} with arguments {kwargs}")
+    
+    if function_name not in callable_registry:
+        logger.error(f"Function {function_name} not found in registry")
+        return json.dumps({"error": f"Function {function_name} not found in registry"})
+    
     try:
-        if function_name in callable_registry:
-            function_to_call = callable_registry[function_name]
-            
-            if asyncio.iscoroutinefunction(function_to_call):
-                # If it's a coroutine function, await it
-                result = await function_to_call(**kwargs)
-            else:
-                # If it's a regular function, run it in a thread to avoid blocking
-                result = await asyncio.to_thread(function_to_call, **kwargs)
-            
-            return json.dumps(result) if not isinstance(result, str) else result
+        func_logger = setup_function_logging(function_name)
+        func_logger.info(f"Function {function_name} called with arguments: {kwargs}")
+        function_to_call = callable_registry[function_name]
+        
+        if asyncio.iscoroutinefunction(function_to_call):
+            # If it's a coroutine function, await it
+            result = await function_to_call(**kwargs)
         else:
-            raise ValueError(f"Function {function_name} not found in registry")
+            # If it's a regular function, run it in a thread to avoid blocking
+            result = await asyncio.to_thread(function_to_call, **kwargs)
+        
+        func_logger.info(f"Function {function_name} executed successfully with result: {result}")
+        return json.dumps(result) if not isinstance(result, str) else result
+    
     except Exception as e:
-        logging.error(f"Error executing function {function_name}: {str(e)}", exc_info=True)
+        func_logger.error(f"Function {function_name} failed with error: {e}")
         return json.dumps({"error": str(e)})
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
@@ -64,14 +70,14 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
 
     if tools:
         function_names = [tool['function']['name'] for tool in tools]
-        logging.info("Available OpenAI functions: %s", function_names)
+        logger.info("Available OpenAI functions: %s", function_names)
 
     messages.append({
       "role": "system",
       "content": SYSTEM_PROMPT
     })
 
-    # logging.info(f"Messages: {messages}")
+    # logger.info(f"Messages: {messages}")
     try:
         response = await client.chat.completions.create(
             model=model_to_use,
@@ -81,7 +87,7 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
         )
         return response
     except Exception as e:
-        logging.error("Unable to generate OpenAI ChatCompletion response: %s", e)
+        logger.error("Unable to generate OpenAI ChatCompletion response: %s", e)
         raise
 
 
@@ -107,11 +113,11 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
                 anthropic_tools.append(tool)
         
         function_names = [tool['name'] for tool in anthropic_tools]
-        # logging.info("Available Anthropic functions: %s", function_names)
+        # logger.info("Available Anthropic functions: %s", function_names)
     else:
         anthropic_tools = None
 
-    # logging.info(f"Anthropic request payload: {json.dumps({'model': model, 'max_tokens': 1024, 'messages': messages, 'tools': anthropic_tools}, indent=2, default=str)}")
+    # logger.info(f"Anthropic request payload: {json.dumps({'model': model, 'max_tokens': 1024, 'messages': messages, 'tools': anthropic_tools}, indent=2, default=str)}")
 
     try:
         response = await client.messages.create(
@@ -124,7 +130,7 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
         )
         return response
     except Exception as e:
-        logging.error("Unable to generate Anthropic ChatCompletion response: %s", e)
+        logger.error("Unable to generate Anthropic ChatCompletion response: %s", e)
         raise
 
 
@@ -151,9 +157,9 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
 
     messages = history
 
-    logging.info(f"Initial length of messages: {len(messages)}")
+    logger.info(f"Initial length of messages: {len(messages)}")
     total_characters = sum(len(message['content']) for message in messages if 'content' in message and message['content'] is not None)
-    logging.info(f"Total characters in all messages: {total_characters}")
+    logger.info(f"Total characters in all messages: {total_characters}")
 
     max_function_calls = 6
     function_call_count = 0
@@ -193,7 +199,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
                 spinner.stop()
                 return False, {"error": "Failed to get a response from Anthropic"}
             
-            logging.info(f"Anthropic response: {chat_response}")
+            logger.info(f"Anthropic response: {chat_response}")
             
             function_calls = []
 
@@ -207,8 +213,8 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
                         "id": content_item.id
                     })
 
-            logging.info(f"Extracted function calls: {function_calls}")
-            logging.info(f"Extracted text content: {text_content}")
+            logger.info(f"Extracted function calls: {function_calls}")
+            logger.info(f"Extracted text content: {text_content}")
 
             if not function_calls:
                 # AI provided a direct response without calling any functions
