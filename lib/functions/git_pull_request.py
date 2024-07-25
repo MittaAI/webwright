@@ -35,6 +35,7 @@ def git_pull_request(pr_title: str, pr_body: str = None, branch_name: str = None
         
         # Get the GitHub token from environment or configuration
         github_token = config.get_github_token()
+        print(github_token)
         
         if not github_token:
             return {"success": False, "error": "GitHub token not found or invalid. Pull request not created."}
