@@ -63,31 +63,64 @@ def analyze_file(file_path: str) -> Dict[str, List[str]]:
             return {}
 
 @function_info_decorator
-def scan_repository(code_path: str) -> Dict[str, Any]:
+def scan_python_code(path: str) -> Dict[str, Any]:
     """
-    Scans a repository directory for Python files, analyzes them, and generates a function file.
+    Scans a directory or a single Python file, analyzes them, and generates a function file.
 
-    It will analyze each Python file in the repository and generate a function file with the summary of the scan results.
+    It will analyze each Python file in the repository (or the single file provided) and generate a 
+    function file with the summary of the scan results.
 
-    Use this in conjunction with cat_file to read the file directly. 
+    Use this in conjunction with cat_file to read the generated file directly.
 
-    :param code_path: The path to the repository to scan
-    :type code_path: str
+    :param path: The path to the repository or Python file to scan
+    :type path: str
     :return: A dictionary containing the scan results and generated function file path
     :rtype: dict
     """
     try:
         results = {}
-        for root, _, files in os.walk(code_path):
-            for file in files:
-                if file.endswith('.py'):
-                    file_path = os.path.join(root, file)
-                    result = analyze_file(file_path)
-                    if result:
-                        results[file_path] = result
+        
+        if os.path.isfile(path):
+            # Single file processing
+            if path.endswith('.py'):
+                result = analyze_file(path)
+                if result:
+                    results[path] = result
+            else:
+                return {
+                    "success": False,
+                    "error": "Not a Python file",
+                    "reason": "The provided file is not a Python file (.py extension required)."
+                }
+        elif os.path.isdir(path):
+            # Directory processing
+            for root, _, files in os.walk(path):
+                for file in files:
+                    if file.endswith('.py'):
+                        file_path = os.path.join(root, file)
+                        result = analyze_file(file_path)
+                        if result:
+                            results[file_path] = result
+        else:
+            return {
+                "success": False,
+                "error": "Invalid path",
+                "reason": "The provided path is neither a file nor a directory."
+            }
+
+        if not results:
+            return {
+                "success": False,
+                "error": "No Python files found",
+                "reason": "No Python files were found in the provided path."
+            }
 
         # Generate function file
-        function_file_path = os.path.join(code_path, 'function_summary.py')
+        if os.path.isfile(path):
+            function_file_path = os.path.join(os.path.dirname(path), 'function_summary.py')
+        else:
+            function_file_path = os.path.join(path, 'function_summary.py')
+
         with open(function_file_path, 'w', encoding='utf-8') as f:
             f.write("# Function Summary\n\n")
             for file_path, data in results.items():
@@ -106,23 +139,14 @@ def scan_repository(code_path: str) -> Dict[str, Any]:
 
         return {
             "success": True,
-            "message": "Repository scanned successfully",
+            "message": "Scan completed successfully",
             "scan_results": results,
             "function_file_path": function_file_path
         }
     except Exception as e:
-        logger.error("Failed to scan repository: " + str(e), exc_info=True)
+        logger.error("Failed to scan: " + str(e), exc_info=True)
         return {
             "success": False,
-            "error": "Failed to scan repository",
+            "error": "Failed to scan",
             "reason": str(e)
         }
-
-# Example usage
-if __name__ == "__main__":
-    repo_path = './'  # Update this path
-    result = scan_repository(repo_path)
-    if result["success"]:
-        print(f"Scan completed. Function file generated at: {result['function_file_path']}")
-    else:
-        print(f"Scan failed: {result['error']}")

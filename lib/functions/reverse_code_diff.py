@@ -1,7 +1,8 @@
 import logging
 import os
 from lib.function_wrapper import function_info_decorator
-from lib.util import calculate_file_hash, ensure_diff_dir_exists, get_gemini_api_key
+from lib.util import calculate_file_hash, ensure_diff_dir_exists
+from lib.config import Config
 import google.generativeai as genai
 from datetime import datetime
 
@@ -48,11 +49,14 @@ def reverse_code_diff_on_file(file_path: str) -> dict:
     :return: A dictionary indicating the result of the operation.
     :rtype: dict
     """
+
+    config = Config()
+
     try:
         # Get Gemini API key
-        gemini_api_key = get_gemini_api_key()
+        gemini_api_key = config.get_gemini_api_key()
         if not gemini_api_key:
-            logger.warning("Gemini API key not available. Some functionality may be limited.")
+            logger.warning("Gemini API key not available. This tool requires a Gemini token.")
             return {"error": "Gemini API key not available"}
 
         # Calculate the current file hash

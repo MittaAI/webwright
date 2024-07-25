@@ -2,7 +2,8 @@ import os
 from git import Repo
 from github import Github
 from lib.function_wrapper import function_info_decorator
-from lib.util import get_logger, get_github_token
+from lib.util import get_logger
+from lib.config import Config
 
 logger = get_logger()
 
@@ -15,6 +16,9 @@ def git_status() -> dict:
     :return: A dictionary containing the status of the git repository, repository name, and remote URL if applicable.
     :rtype: dict
     """
+
+    config = Config()
+
     try:
         # Automatically detect the current repository path
         repo = Repo(".")
@@ -30,7 +34,7 @@ def git_status() -> dict:
         }
 
         # Get the GitHub token from environment or configuration
-        token_info = get_github_token()
+        token_info = config.get_github_token()
         github_token = token_info.get('token')
 
         if github_token:

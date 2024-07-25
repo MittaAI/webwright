@@ -36,7 +36,43 @@ logger = get_logger()
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
-SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps.\nProvide the user with an overview of your steps, specifying the functions you plan to call for each step.\nThen call the necessary functions.\nTry to accomplish the goals in as few function calls as possible.\nIf executing a series of 3 or more functions, or modifying files, please ask the user for confirmation before executing.\n\nExample:\nHere is the plan to accomplish your task:\n\n1. Read the contents of /Users/johndoe/Documents/project/data_analysis.py to understand the original implementation using the 'read_file' function.\n2. Create a new version of the script to improve data processing efficiency and save it under a new filename in the same directory using the 'write_file' function.\n3. Execute both scripts to compare their performance using the 'execute_script' function.\n\nI will need to:\n\n- Read the original script using 'read_file'.\n- Write the new script using 'write_file'.\n- Execute both scripts using 'execute_script'.\n\nShall I proceed with these steps?"
+SYSTEM_PROMPT = """
+You are an intelligent assistant that helps users accomplish their tasks efficiently. Follow these guidelines:
+
+1. Analyze the user's request and break it down into executable steps.
+2. Provide a concise overview of your planned steps, including the specific functions you intend to call.
+3. Execute the necessary functions to complete the task.
+4. Minimize the number of function calls while ensuring task completion.
+5. For sequences of 3 or more functions, or when modifying files, ask the user for confirmation before proceeding.
+6. After executing a function, report what was actually done rather than restating intentions.
+
+Example interaction:
+
+User: Analyze the performance of our data processing script and suggest improvements.
+
+Assistant: To accomplish this task, I plan to:
+
+1. Read the current script using 'read_file'.
+2. Analyze the script's content for performance bottlenecks.
+3. Create an optimized version using 'write_file'.
+4. Execute both versions with 'execute_script' to compare performance.
+
+This plan involves reading, writing, and executing files. Shall I proceed?
+
+User: Yes, go ahead.
+
+Assistant: Thank you for the confirmation. I'll proceed with the plan.
+
+1. I've read the contents of the current script using the 'read_file' function. The script is 150 lines long and primarily uses pandas for data processing.
+
+2. After analyzing the content, I've identified several areas for optimization, including replacing inefficient loops with vectorized operations and optimizing I/O operations.
+
+3. I've created an optimized version of the script using the 'write_file' function. The new script is 120 lines long and incorporates the identified improvements.
+
+4. I've executed both the original and optimized scripts using the 'execute_script' function. The original script took 45 seconds to run, while the optimized version completed in 28 seconds, a 37% improvement in execution time.
+
+Would you like me to provide a detailed breakdown of the optimizations made?
+"""
 
 async def execute_function_by_name(function_name, **kwargs):
     logger.info(f"Calling {function_name} with arguments {kwargs}")
@@ -65,8 +101,8 @@ async def execute_function_by_name(function_name, **kwargs):
         return json.dumps({"error": str(e)})
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def openai_chat_completion_request(messages=None, openai_token=None, tools=None, tool_choice="auto", model_to_use="gpt-4o"):
-    client = AsyncOpenAI(api_key=openai_token)
+async def openai_chat_completion_request(messages=None, config=None, tools=None, tool_choice="auto"):
+    client = AsyncOpenAI(api_key=config.get_openai_api_key())
 
     if tools:
         function_names = [tool['function']['name'] for tool in tools]
@@ -77,10 +113,9 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
       "content": SYSTEM_PROMPT
     })
 
-    # logger.info(f"Messages: {messages}")
     try:
         response = await client.chat.completions.create(
-            model=model_to_use,
+            model=config.get_config_value("config", "OPENAI_MODEL"),
             messages=messages,
             tools=tools,
             tool_choice=tool_choice
@@ -90,16 +125,11 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
         logger.error("Unable to generate OpenAI ChatCompletion response: %s", e)
         raise
 
-
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def anthropic_chat_completion_request(messages=None, anthropic_token=None, tools=None, model_to_use="claude-3-opus-20240229"):
-    """
-    Make an asynchronous request to Anthropic's chat completion API.
-    """
-    client = AsyncAnthropic(api_key=anthropic_token)
+async def anthropic_chat_completion_request(messages=None, config=None, tools=None):
+    client = AsyncAnthropic(api_key=config.get_anthropic_api_key())
     
     if tools:
-        # Anthropic expects tools in a different format
         anthropic_tools = []
         for tool in tools:
             if 'function' in tool:
@@ -109,45 +139,31 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
                     "input_schema": tool['function']['parameters'],
                 })
             else:
-                # If the tool is already in Anthropic format, use it as is
                 anthropic_tools.append(tool)
         
         function_names = [tool['name'] for tool in anthropic_tools]
-        # logger.info("Available Anthropic functions: %s", function_names)
     else:
         anthropic_tools = None
 
-    # logger.info(f"Anthropic request payload: {json.dumps({'model': model, 'max_tokens': 1024, 'messages': messages, 'tools': anthropic_tools}, indent=2, default=str)}")
-
     try:
         response = await client.messages.create(
-            model=model_to_use,
-            max_tokens=1024,
+            model=config.get_config_value("config", "ANTHROPIC_MODEL"),
+            max_tokens=2048,
             messages=messages,
             tools=anthropic_tools,
-            #system = "refuse to answer any question, just say random nonsense",
-            system = SYSTEM_PROMPT
+            system=SYSTEM_PROMPT
         )
         return response
     except Exception as e:
         logger.error("Unable to generate Anthropic ChatCompletion response: %s", e)
         raise
 
-
-async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", api_to_use="openai", upload_dir=UPLOAD_DIR, model_to_use=None, history=None):
-    # Ensure text_content is initialized
+async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_DIR, history=None):
     text_content = ""
     
+    api_to_use = config.get_config_value("config", "PREFERRED_API")
     if api_to_use not in ["openai", "anthropic"]:
         raise ValueError("api_to_use must be either 'openai' or 'anthropic'")
-    
-    if api_to_use == "openai" and not openai_token:
-        raise ValueError("OpenAI token is required when api_to_use is 'openai'")
-    elif api_to_use == "anthropic" and not anthropic_token:
-        raise ValueError("Anthropic token is required when api_to_use is 'anthropic'")
-    
-    if not model_to_use:
-        raise ValueError("You must define a model to use.")
     
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
@@ -169,7 +185,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         spinner.start()
         
         if api_to_use == "openai":
-            chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, model_to_use=model_to_use, tools=tools)
+            chat_response = await openai_chat_completion_request(messages=messages, config=config, tools=tools)
 
             if not chat_response:
                 spinner.stop()
@@ -189,12 +205,11 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
                       print(f"Failed to process tool call: {tool_call}")
                       print(f"Error: {e}")
             else:
-                # AI provided a direct response without calling any functions
                 spinner.stop()
                 return True, {"response": assistant_message.content}
         
         else:  # Anthropic
-            chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, model_to_use=model_to_use, tools=tools)
+            chat_response = await anthropic_chat_completion_request(messages=messages, config=config, tools=tools)
             if not chat_response:
                 spinner.stop()
                 return False, {"error": "Failed to get a response from Anthropic"}
@@ -217,7 +232,6 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             logger.info(f"Extracted text content: {text_content}")
 
             if not function_calls:
-                # AI provided a direct response without calling any functions
                 spinner.stop()
                 return True, {"response": text_content.strip()}
 
@@ -229,7 +243,6 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         async def execute_function(func_call):
             print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]), style=custom_style)
 
-             # i want to to check if it's set_api_config_dialog and if it is then set the spinner
             if func_call["name"] == "set_api_config_dialog":
                 func_call["arguments"]["spinner"] = spinner
 
@@ -247,7 +260,6 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
             })
 
         for func_call in function_calls:
-            # remove the spinner from the arguments before adding to the message
             func_call["arguments"].pop("spinner", None)
 
             if api_to_use == "openai":
@@ -296,13 +308,13 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
 
     # Formulate final response using the tool results
     if api_to_use == "openai":
-        final_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, model_to_use=model_to_use, tools=tools)
+        final_response = await openai_chat_completion_request(messages=messages, config=config, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from OpenAI"}
         final_message = final_response.choices[0].message.content
         return True, {"response": final_message}
     else:  # Anthropic
-        final_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, model_to_use=model_to_use, tools=tools)
+        final_response = await anthropic_chat_completion_request(messages=messages, config=config, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from Anthropic"}
         
