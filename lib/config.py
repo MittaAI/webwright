@@ -418,6 +418,24 @@ Host {git_host}
 
     def get_github_token(self):
         from github import Github
+        import os
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            github_token = self.get_config_value("config", "GITHUB_API_TOKEN")
+            if github_token:
+                try:
+                    g = Github(github_token)
+                    g.get_user().login
+                    return {"token": github_token, "error": None}
+                except Exception as e:
+                    error_message = f"Config GitHub token failed: {e}"
+                    logger.error(error_message)
+        except Exception as e:
+            error_message = f"Failed to load GitHub token from config: {e}"
+            logger.error(error_message)
 
         github_token = os.environ.get("GITHUB_TOKEN")
         if github_token:
@@ -428,21 +446,6 @@ Host {git_host}
             except Exception as e:
                 error_message = f"Environment GitHub token failed: {e}"
                 logger.error(error_message)
-
-        try:
-            github_token = self.get_config_value("config", "GITHUB_API_TOKEN")
-            try:
-                g = Github(github_token)
-                g.get_user().login
-                return {"token": github_token, "error": None}
-            except Exception as e:
-                error_message = f"Config GitHub token failed: {e}"
-                logger.error(error_message)
-                return {"token": None, "error": error_message}
-        except Exception as e:
-            error_message = f"Failed to load GitHub token from config: {e}"
-            logger.error(error_message)
-            return {"token": None, "error": error_message}
 
         return {"token": None, "error": "GitHub token not available from both environment and config."}
 
