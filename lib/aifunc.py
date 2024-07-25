@@ -38,27 +38,34 @@ UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
 SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps.\nProvide the user with an overview of your steps, specifying the functions you plan to call for each step.\nThen call the necessary functions.\nTry to accomplish the goals in as few function calls as possible.\nIf executing a series of 3 or more functions, or modifying files, please ask the user for confirmation before executing.\n\nExample:\nHere is the plan to accomplish your task:\n\n1. Read the contents of /Users/johndoe/Documents/project/data_analysis.py to understand the original implementation using the 'read_file' function.\n2. Create a new version of the script to improve data processing efficiency and save it under a new filename in the same directory using the 'write_file' function.\n3. Execute both scripts to compare their performance using the 'execute_script' function.\n\nI will need to:\n\n- Read the original script using 'read_file'.\n- Write the new script using 'write_file'.\n- Execute both scripts using 'execute_script'.\n\nShall I proceed with these steps?"
 
-# Execute function by name
 async def execute_function_by_name(function_name, **kwargs):
-    logger.info(f"calling {function_name}") # put args in function specific log
-
-    # I put the function logger calls in here which seemed most elegant, but if we want to have calls to the function logger in the function itself, we will need to rethink. Also initializing logger each time might be inefficient, but doubt it really matters.
+    logging.info(f"Calling {function_name} with arguments {kwargs}")
+    
+    if function_name not in callable_registry:
+        logging.error(f"Function {function_name} not found in registry")
+        return json.dumps({"error": f"Function {function_name} not found in registry"})
+    
     try:
-        if function_name in callable_registry:
-            func_logger = setup_function_logging(function_name)
-            func_logger.info(f"Function {function_name} called with arguments: {kwargs}")
-            function_to_call = callable_registry[function_name]
-            result = await function_to_call(**kwargs) if asyncio.iscoroutinefunction(function_to_call) else function_to_call(**kwargs)
-            func_logger.info(f"Function {function_name} executed successfully with result: {result}")
-            return json.dumps(result) if not isinstance(result, str) else result
+        func_logger = setup_function_logging(function_name)
+        func_logger.info(f"Function {function_name} called with arguments: {kwargs}")
+        function_to_call = callable_registry[function_name]
+        
+        if asyncio.iscoroutinefunction(function_to_call):
+            # If it's a coroutine function, await it
+            result = await function_to_call(**kwargs)
         else:
-            raise ValueError(f"Function {function_name} not found in registry")
+            # If it's a regular function, run it in a thread to avoid blocking
+            result = await asyncio.to_thread(function_to_call, **kwargs)
+        
+        func_logger.info(f"Function {function_name} executed successfully with result: {result}")
+        return json.dumps(result) if not isinstance(result, str) else result
+    
     except Exception as e:
         func_logger.error(f"Function {function_name} failed with error: {e}")
         return json.dumps({"error": str(e)})
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def openai_chat_completion_request(messages=None, openai_token=None, tools=None, tool_choice="auto", model="gpt-4o"):
+async def openai_chat_completion_request(messages=None, openai_token=None, tools=None, tool_choice="auto", model_to_use="gpt-4o"):
     client = AsyncOpenAI(api_key=openai_token)
 
     if tools:
@@ -73,7 +80,7 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
     # logger.info(f"Messages: {messages}")
     try:
         response = await client.chat.completions.create(
-            model=model,
+            model=model_to_use,
             messages=messages,
             tools=tools,
             tool_choice=tool_choice
@@ -85,7 +92,7 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
 
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def anthropic_chat_completion_request(messages=None, anthropic_token=None, tools=None, model="claude-3-opus-20240229"):
+async def anthropic_chat_completion_request(messages=None, anthropic_token=None, tools=None, model_to_use="claude-3-opus-20240229"):
     """
     Make an asynchronous request to Anthropic's chat completion API.
     """
@@ -114,7 +121,7 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
 
     try:
         response = await client.messages.create(
-            model=model,
+            model=model_to_use,
             max_tokens=1024,
             messages=messages,
             tools=anthropic_tools,
@@ -127,7 +134,7 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
         raise
 
 
-async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", api_to_use="openai", upload_dir=UPLOAD_DIR, history=None):
+async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", api_to_use="openai", upload_dir=UPLOAD_DIR, model_to_use=None, history=None):
     # Ensure text_content is initialized
     text_content = ""
     
@@ -138,6 +145,9 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         raise ValueError("OpenAI token is required when api_to_use is 'openai'")
     elif api_to_use == "anthropic" and not anthropic_token:
         raise ValueError("Anthropic token is required when api_to_use is 'anthropic'")
+    
+    if not model_to_use:
+        raise ValueError("You must define a model to use.")
     
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
@@ -159,7 +169,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         spinner.start()
         
         if api_to_use == "openai":
-            chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
+            chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, model_to_use=model_to_use, tools=tools)
 
             if not chat_response:
                 spinner.stop()
@@ -184,7 +194,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
                 return True, {"response": assistant_message.content}
         
         else:  # Anthropic
-            chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
+            chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, model_to_use=model_to_use, tools=tools)
             if not chat_response:
                 spinner.stop()
                 return False, {"error": "Failed to get a response from Anthropic"}
@@ -286,13 +296,13 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
 
     # Formulate final response using the tool results
     if api_to_use == "openai":
-        final_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
+        final_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, model_to_use=model_to_use, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from OpenAI"}
         final_message = final_response.choices[0].message.content
         return True, {"response": final_message}
     else:  # Anthropic
-        final_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
+        final_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, model_to_use=model_to_use, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from Anthropic"}
         

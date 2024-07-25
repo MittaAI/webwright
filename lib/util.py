@@ -5,16 +5,19 @@ import string
 import random
 from configparser import ConfigParser
 import getpass
+from datetime import datetime
 
 from coolname import generate_slug
 
 import re
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog, yes_no_dialog
+from openai import OpenAI
 from prompt_toolkit.application import Application
 from prompt_toolkit.styles import Style
 
 import logging
+import hashlib
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -108,6 +111,45 @@ def create_and_check_directory(directory_path):
             logger.error(f"Error: The directory '{directory_path}' was not found after creation attempt.")
     except Exception as e:
         logger.error(f"An error occurred while creating the directory: {e}")
+
+def ensure_diff_dir_exists():
+    """Ensure that the diff directory exists within the .webwright folder."""
+    diff_dir = os.path.join(webwright_dir, 'diffs')
+    create_and_check_directory(diff_dir)
+    return diff_dir
+
+def store_diff(diff: str, file_path: str):
+    """
+    Store the generated diff for a given file in the diffs directory.
+    The stored diff filename includes a timestamp and the hash of the original file.
+    
+    :param diff: The generated diff content.
+    :param file_path: The path of the file the diff is associated with.
+    :return: The path where the diff file was stored, or None if there was an error.
+    :rtype: str or None
+    """
+    diff_dir = ensure_diff_dir_exists()
+    
+    # Calculate the hash of the original file
+    file_hash = calculate_file_hash(file_path)
+    if file_hash is None:
+        logger.error(f"Failed to calculate hash for {file_path}. Cannot store diff.")
+        return None
+
+    # Generate a unique filename for the diff
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = os.path.basename(file_path)
+    diff_file_name = f"{file_name}_{timestamp}_{file_hash}.diff"
+    diff_file_path = os.path.join(diff_dir, diff_file_name)
+    
+    try:
+        with open(diff_file_path, 'w') as f:
+            f.write(diff)
+        logger.info(f"Diff stored for {file_path} at {diff_file_path}")
+        return diff_file_path
+    except Exception as e:
+        logger.error(f"Error storing diff for {file_path}: {str(e)}")
+        return None
 
 def extract_urls(query):
     url_pattern = re.compile(r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+')
@@ -210,6 +252,58 @@ def setup_ssh_key():
     return ssh_key_path
 
 ###############################################################################
+#                                Gemini Setup                                 #
+###############################################################################
+import google.generativeai as genai
+from prompt_toolkit.shortcuts import input_dialog
+
+def check_gemini_token(gemini_token):
+    try:
+        genai.configure(api_key=gemini_token)
+
+        model = genai.GenerativeModel('gemini-1.5-flash')
+
+        prompt = "Confirm the token is working."
+        response = model.generate_content(prompt)
+
+        print("Gemini API token verified successfully.")
+        return True
+
+    except Exception as e:
+        print(f"Error verifying Gemini API token: {str(e)}")
+        return False
+
+def get_gemini_api_key():
+    gemini_token = os.getenv("GEMINI_API_KEY") or get_config_value("config", "GEMINI_API_KEY")
+
+    if gemini_token == "NONE":
+        return None
+    
+    if gemini_token and check_gemini_token(gemini_token):
+        return gemini_token
+
+    gemini_token = input_dialog(
+        title="Gemini API Key",
+        text="Enter your Gemini API key (Enter to skip):"
+    ).run()
+
+    if gemini_token == '':  # User hit Enter without providing a token
+        print("Gemini token entry cancelled.")
+        set_config_value("config", "GEMINI_API_KEY", "NONE")
+        return None
+    
+    if gemini_token:
+        if check_gemini_token(gemini_token):
+            set_config_value("config", "GEMINI_API_KEY", gemini_token)
+            return gemini_token
+        else:
+            print("Invalid Gemini token. Skipping.")
+    return None
+
+def set_gemini_api_key(api_key):
+    set_config_value("config", "GEMINI_API_KEY", api_key)
+
+###############################################################################
 #                                OpenAI Setup                                 #
 ###############################################################################
 from openai import OpenAI
@@ -218,7 +312,7 @@ def check_openai_token(openai_token):
     client = OpenAI(api_key=openai_token)
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo", # only used to verify token
             messages=[{"role": "user", "content": "Confirm the token is working."}],
             max_tokens=5
         )
@@ -258,6 +352,33 @@ def get_openai_api_key():
 def set_openai_api_key(api_key):
     set_config_value("config", "OPENAI_API_KEY", api_key)
 
+# Function to list OpenAI models
+def list_openai_models(api_key):
+    client = OpenAI(api_key=api_key)
+    models = client.models.list()
+    return models
+
+# Function to select and set OpenAI model based on a dialog
+def select_openai_model(api_key):
+    models = list_openai_models(api_key=api_key)
+    # Filter to show only gpt models
+    model_choices = [(model.id, model.id) for model in models.data if "gpt" in model.id.lower()]
+    
+    selected_model = radiolist_dialog(
+        title="Select OpenAI Model",
+        text="Choose an OpenAI model from the list below:",
+        values=model_choices
+    ).run()
+    
+    if selected_model:
+        set_config_value("config", "OPENAI_MODEL", selected_model)
+        print(f"Selected OpenAI model: {selected_model}")
+        return selected_model
+    else:
+        print("No model selected.")
+        return None
+ 
+
 ###############################################################################
 #                               Anthropic Setup                               #
 ###############################################################################
@@ -267,7 +388,7 @@ def check_anthropic_token(anthropic_token):
     try:
         client = anthropic.Anthropic(api_key=anthropic_token)
         message = client.messages.create(
-            model="claude-3-5-sonnet-20240620",
+            model="claude-3-5-sonnet-20240620", # only used to verify token
             max_tokens=10,
             temperature=0,
             system="Respond with 'Token verified' if this message is received.",
@@ -314,23 +435,61 @@ def get_anthropic_api_key():
             print("Invalid Anthropic token. Skipping.")
     return None
 
-
 def set_anthropic_api_key(api_key):
     set_config_value("config", "ANTHROPIC_API_KEY", api_key)
 
+# Manual list of Anthropic models
+ANTHROPIC_MODELS = [
+    ("claude-3-opus-20240229", "Claude 3 Opus"),
+    ("claude-3-sonnet-20240229", "Claude 3 Sonnet"),
+    ("claude-3-haiku-20240307", "Claude 3 Haiku"),
+    ("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet")
+]
+
+# Function to list Anthropic models
+def list_anthropic_models():
+    return ANTHROPIC_MODELS
+
+# Function to select and set Anthropic model based on a dialog
+def select_anthropic_model():
+    model_choices = list_anthropic_models()
+    
+    selected_model = radiolist_dialog(
+        title="Select Anthropic Model",
+        text="Choose an Anthropic model from the list below:",
+        values=model_choices
+    ).run()
+    
+    if selected_model:
+        set_config_value("config", "ANTHROPIC_MODEL", selected_model)
+        print(f"Selected Anthropic model: {selected_model}")
+        return selected_model
+    else:
+        print("No model selected.")
+        return None
 
 def determine_api_to_use():
     preferred_api = get_config_value("config", "PREFERRED_API")
+
     openai_token = get_openai_api_key()
     anthropic_token = get_anthropic_api_key()
     
+    openai_model = get_config_value("config", "OPENAI_MODEL")
+    anthropic_model = get_config_value("config", "ANTHROPIC_MODEL")
+    
+    if not openai_model or openai_model == "NONE":
+        openai_model = select_openai_model(api_key=openai_token)
+    
+    if not anthropic_model or anthropic_model == "NONE":
+        anthropic_model = select_anthropic_model()
+
     # Check if the preferred API is set and its token is valid
     if preferred_api == "openai" and openai_token:
-        print("Using preferred API: OpenAI")
-        return "openai", openai_token, None, "gpt-3.5-turbo"
+        print(f"Using preferred API: OpenAI with model {openai_model}")
+        return "openai", openai_token, None, openai_model
     elif preferred_api == "anthropic" and anthropic_token:
-        print("Using preferred API: Anthropic")
-        return "anthropic", None, anthropic_token, "claude-3-5-sonnet-20240620"
+        print(f"Using preferred API: Anthropic with model {anthropic_model}")
+        return "anthropic", None, anthropic_token, anthropic_model
     
     # If preferred API is not set or its token is invalid, proceed with selection logic
     if openai_token and anthropic_token:
@@ -339,8 +498,8 @@ def determine_api_to_use():
                 title="Choose API",
                 text="Both OpenAI and Anthropic APIs are available. Which one would you like to use?",
                 values=[
-                    ("openai", "OpenAI"),
-                    ("anthropic", "Anthropic")
+                    ("openai", f"OpenAI ({openai_model})"),
+                    ("anthropic", f"Anthropic ({anthropic_model})")
                 ]
             ).run()
             
@@ -349,8 +508,10 @@ def determine_api_to_use():
                 return None, None, None, None
             
             set_config_value("config", "PREFERRED_API", str(choice))
-            function_call_model = "gpt-3.5-turbo" if choice == "openai" else "claude-3-5-sonnet-20240620"
-            return choice, openai_token, anthropic_token, function_call_model
+            if choice == "openai":
+                return choice, openai_token, None, openai_model
+            else:
+                return choice, None, anthropic_token, anthropic_model
         except RuntimeError as e:
             if "Event loop is closed" in str(e):
                 # Restart the event loop
@@ -360,13 +521,13 @@ def determine_api_to_use():
             else:
                 raise  # Re-raise if it's a different RuntimeError
     elif openai_token:
-        print("Using OpenAI API")
+        print(f"Using OpenAI API with model {openai_model}")
         set_config_value("config", "PREFERRED_API", "openai")
-        return "openai", openai_token, None, "gpt-3.5-turbo"
+        return "openai", openai_token, None, openai_model
     elif anthropic_token:
-        print("Using Anthropic API")
+        print(f"Using Anthropic API with model {anthropic_model}")
         set_config_value("config", "PREFERRED_API", "anthropic")
-        return "anthropic", None, anthropic_token, "claude-3-5-sonnet-20240620"
+        return "anthropic", None, anthropic_token, anthropic_model
     else:
         print("Error: Neither OpenAI nor Anthropic API key is set.")
         try:
@@ -385,7 +546,7 @@ def determine_api_to_use():
                 application.run()
                 return determine_api_to_use()  # Try again
             else:
-                raise  # Re-raise if it's a different RuntimeError  
+                raise  # Re-raise if it's a different RuntimeError
 
 # Github setup
 def get_github_token():
@@ -431,7 +592,19 @@ def get_github_token():
     # If no token could be retrieved
     return {"token": None, "error": "GitHub token not available from both environment and config."}
 
-    
+def calculate_file_hash(file_path):
+    """Calculate the SHA-256 hash of a file."""
+    sha256_hash = hashlib.sha256()
+    try:
+        with open(file_path, "rb") as f:
+            # Read and update hash in chunks of 4K
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+    except Exception as e:
+        logger.error(f"Error calculating hash for {file_path}: {str(e)}")
+        return None
+
 # Response formatting
 def format_response(response):
     if response is None:

@@ -1,5 +1,6 @@
 gitpython
 prompt_toolkit
+beautifulsoup4
 coolname
 pygments
 openai
@@ -12,3 +13,7 @@ sentence_transformers==2.2.2
 InstructorEmbedding
 Halo
 PyGithub
+cowsay
+google-generativeai
+unidiff
+patch

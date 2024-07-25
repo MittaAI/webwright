@@ -1,5 +1,5 @@
 from lib.function_wrapper import function_info_decorator
-from lib.util import set_config_value, check_openai_token, check_anthropic_token
+from lib.util import set_config_value, check_openai_token, check_anthropic_token, select_openai_model, select_anthropic_model, get_config_value
 import asyncio
 import json
 
@@ -8,7 +8,7 @@ async def set_api_config_dialog(config_type: str, spinner=None) -> dict:
     """
     Asynchronously set the API configuration for OpenAI or Anthropic, or set the preferred API to use for function calls.
     
-    :param config_type: The type of configuration to set. Can be 'openai_key', 'anthropic_key', or 'preferred_api'.
+    :param config_type: The type of configuration to set. Can be 'openai_key', 'anthropic_key', 'set_openai_model', 'set_anthropic_model', or 'preferred_api'.
     :type config_type: str
     :param spinner: Optional spinner object to handle UI feedback.
     :type spinner: object
@@ -16,9 +16,6 @@ async def set_api_config_dialog(config_type: str, spinner=None) -> dict:
     :rtype: dict
     """
     try:
-        if spinner:
-            spinner.stop()
-
         loop = asyncio.get_event_loop()
 
         if config_type == 'openai_key':
@@ -59,14 +56,28 @@ async def set_api_config_dialog(config_type: str, spinner=None) -> dict:
             else:
                 result = {"success": False, "message": "Invalid choice. Preferred API selection cancelled."}
         
+        elif config_type == 'set_openai_model':
+            openai_token = get_config_value("config", "OPENAI_API_KEY")
+            if openai_token:
+                new_model = await loop.run_in_executor(None, select_openai_model, openai_token)
+                if new_model:
+                    result = {"success": True, "message": f"OpenAI model set to {new_model}."}
+                else:
+                    result = {"success": False, "message": "OpenAI model selection cancelled or failed."}
+            else:
+                result = {"success": False, "message": "OpenAI API key is not set. Cannot select model."}
+
+        elif config_type == 'set_anthropic_model':
+            new_model = await loop.run_in_executor(None, select_anthropic_model)
+            if new_model:
+                result = {"success": True, "message": f"Anthropic model set to {new_model}."}
+            else:
+                result = {"success": False, "message": "Anthropic model selection cancelled or failed."}
+
         else:
             result = {"success": False, "message": "Invalid config_type. Must be 'openai_key', 'anthropic_key', or 'preferred_api'."}
 
     except Exception as e:
         result = {"success": False, "message": f"An error occurred: {str(e)}"}
-
-    finally:
-        if spinner:
-            spinner.start()
 
     return result

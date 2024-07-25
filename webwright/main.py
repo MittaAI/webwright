@@ -24,7 +24,7 @@ from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_
 from lib.util import get_username
 from lib.util import format_response
 from lib.util import determine_api_to_use
-from lib.util import setup_main_logging, get_logger
+from lib.util import get_logger
 
 from halo import Halo
 
