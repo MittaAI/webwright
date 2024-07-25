@@ -233,24 +233,16 @@ class Config:
             choice = preferred_api
             logger.info(f"Using preferred API: {choice}")
         else:
-            try:
-                choice = radiolist_dialog(
-                    title="Choose API",
-                    text="Multiple APIs are available. Which one would you like to use?",
-                    values=available_apis
-                ).run()
-                
-                if choice is None:
-                    logger.info("API selection cancelled. Exiting program.")
-                    return None, None, None, None
-            except RuntimeError as e:
-                if "Event loop is closed" in str(e):
-                    application = Application()
-                    application.run()
-                    return self.determine_api_to_use()
-                else:
-                    raise
-
+            choice = radiolist_dialog(
+                title="Choose API",
+                text="Multiple APIs are available. Which one would you like to use?",
+                values=available_apis
+            ).run()
+            
+            if choice is None:
+                logger.info("API selection cancelled. Exiting program.")
+                return None, None, None, None
+            
         self.set_config_value("config", "PREFERRED_API", str(choice))
         if choice == "openai":
             logger.info(f"Using OpenAI API with model {openai_model}")

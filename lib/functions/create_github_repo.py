@@ -1,5 +1,6 @@
 import os
 from github import Github
+from git import Repo
 from lib.function_wrapper import function_info_decorator
 from lib.config import Config
 
@@ -22,7 +23,8 @@ def create_github_repo(repo_name: str, description: str, readme_content: str, li
     try:
         config = Config()
         # Get the GitHub token from the environment variable
-        github_token = config.get_github_token()
+        github_token_data = config.get_github_token()
+        github_token = github_token_data.get('token')
         if not github_token:
             return {
                 "success": False,
@@ -31,7 +33,7 @@ def create_github_repo(repo_name: str, description: str, readme_content: str, li
             }
 
         # Create a GitHub instance
-        g = Github(github_token.get('token'))
+        g = Github(github_token)
 
         # Get the authenticated user
         user = g.get_user()
@@ -44,7 +46,6 @@ def create_github_repo(repo_name: str, description: str, readme_content: str, li
         os.makedirs(local_repo_path, exist_ok=True)
 
         # Clone the repository to the local directory
-        repo.clone_url = repo.clone_url.replace("https://", f"https://{github_token}@")
         repo_clone = Repo.clone_from(repo.clone_url, local_repo_path)
 
         # Create a README file
