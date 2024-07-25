@@ -12,6 +12,7 @@ from coolname import generate_slug
 import re
 from prompt_toolkit.formatted_text import FormattedText
 from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog, yes_no_dialog
+from openai import OpenAI
 from prompt_toolkit.application import Application
 from prompt_toolkit.styles import Style
 
@@ -283,7 +284,7 @@ def check_openai_token(openai_token):
     client = OpenAI(api_key=openai_token)
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo", # only used to verify token
             messages=[{"role": "user", "content": "Confirm the token is working."}],
             max_tokens=5
         )
@@ -323,6 +324,33 @@ def get_openai_api_key():
 def set_openai_api_key(api_key):
     set_config_value("config", "OPENAI_API_KEY", api_key)
 
+# Function to list OpenAI models
+def list_openai_models(api_key):
+    client = OpenAI(api_key=api_key)
+    models = client.models.list()
+    return models
+
+# Function to select and set OpenAI model based on a dialog
+def select_openai_model(api_key):
+    models = list_openai_models(api_key=api_key)
+    # Filter to show only gpt models
+    model_choices = [(model.id, model.id) for model in models.data if "gpt" in model.id.lower()]
+    
+    selected_model = radiolist_dialog(
+        title="Select OpenAI Model",
+        text="Choose an OpenAI model from the list below:",
+        values=model_choices
+    ).run()
+    
+    if selected_model:
+        set_config_value("config", "OPENAI_MODEL", selected_model)
+        print(f"Selected OpenAI model: {selected_model}")
+        return selected_model
+    else:
+        print("No model selected.")
+        return None
+ 
+
 ###############################################################################
 #                               Anthropic Setup                               #
 ###############################################################################
@@ -332,7 +360,7 @@ def check_anthropic_token(anthropic_token):
     try:
         client = anthropic.Anthropic(api_key=anthropic_token)
         message = client.messages.create(
-            model="claude-3-5-sonnet-20240620",
+            model="claude-3-5-sonnet-20240620", # only used to verify token
             max_tokens=10,
             temperature=0,
             system="Respond with 'Token verified' if this message is received.",
@@ -379,23 +407,61 @@ def get_anthropic_api_key():
             print("Invalid Anthropic token. Skipping.")
     return None
 
-
 def set_anthropic_api_key(api_key):
     set_config_value("config", "ANTHROPIC_API_KEY", api_key)
 
+# Manual list of Anthropic models
+ANTHROPIC_MODELS = [
+    ("claude-3-opus-20240229", "Claude 3 Opus"),
+    ("claude-3-sonnet-20240229", "Claude 3 Sonnet"),
+    ("claude-3-haiku-20240307", "Claude 3 Haiku"),
+    ("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet")
+]
+
+# Function to list Anthropic models
+def list_anthropic_models():
+    return ANTHROPIC_MODELS
+
+# Function to select and set Anthropic model based on a dialog
+def select_anthropic_model():
+    model_choices = list_anthropic_models()
+    
+    selected_model = radiolist_dialog(
+        title="Select Anthropic Model",
+        text="Choose an Anthropic model from the list below:",
+        values=model_choices
+    ).run()
+    
+    if selected_model:
+        set_config_value("config", "ANTHROPIC_MODEL", selected_model)
+        print(f"Selected Anthropic model: {selected_model}")
+        return selected_model
+    else:
+        print("No model selected.")
+        return None
 
 def determine_api_to_use():
     preferred_api = get_config_value("config", "PREFERRED_API")
+
     openai_token = get_openai_api_key()
     anthropic_token = get_anthropic_api_key()
     
+    openai_model = get_config_value("config", "OPENAI_MODEL")
+    anthropic_model = get_config_value("config", "ANTHROPIC_MODEL")
+    
+    if not openai_model or openai_model == "NONE":
+        openai_model = select_openai_model(api_key=openai_token)
+    
+    if not anthropic_model or anthropic_model == "NONE":
+        anthropic_model = select_anthropic_model()
+
     # Check if the preferred API is set and its token is valid
     if preferred_api == "openai" and openai_token:
-        print("Using preferred API: OpenAI")
-        return "openai", openai_token, None, "gpt-3.5-turbo"
+        print(f"Using preferred API: OpenAI with model {openai_model}")
+        return "openai", openai_token, None, openai_model
     elif preferred_api == "anthropic" and anthropic_token:
-        print("Using preferred API: Anthropic")
-        return "anthropic", None, anthropic_token, "claude-3-5-sonnet-20240620"
+        print(f"Using preferred API: Anthropic with model {anthropic_model}")
+        return "anthropic", None, anthropic_token, anthropic_model
     
     # If preferred API is not set or its token is invalid, proceed with selection logic
     if openai_token and anthropic_token:
@@ -404,8 +470,8 @@ def determine_api_to_use():
                 title="Choose API",
                 text="Both OpenAI and Anthropic APIs are available. Which one would you like to use?",
                 values=[
-                    ("openai", "OpenAI"),
-                    ("anthropic", "Anthropic")
+                    ("openai", f"OpenAI ({openai_model})"),
+                    ("anthropic", f"Anthropic ({anthropic_model})")
                 ]
             ).run()
             
@@ -414,8 +480,10 @@ def determine_api_to_use():
                 return None, None, None, None
             
             set_config_value("config", "PREFERRED_API", str(choice))
-            function_call_model = "gpt-3.5-turbo" if choice == "openai" else "claude-3-5-sonnet-20240620"
-            return choice, openai_token, anthropic_token, function_call_model
+            if choice == "openai":
+                return choice, openai_token, None, openai_model
+            else:
+                return choice, None, anthropic_token, anthropic_model
         except RuntimeError as e:
             if "Event loop is closed" in str(e):
                 # Restart the event loop
@@ -425,13 +493,13 @@ def determine_api_to_use():
             else:
                 raise  # Re-raise if it's a different RuntimeError
     elif openai_token:
-        print("Using OpenAI API")
+        print(f"Using OpenAI API with model {openai_model}")
         set_config_value("config", "PREFERRED_API", "openai")
-        return "openai", openai_token, None, "gpt-3.5-turbo"
+        return "openai", openai_token, None, openai_model
     elif anthropic_token:
-        print("Using Anthropic API")
+        print(f"Using Anthropic API with model {anthropic_model}")
         set_config_value("config", "PREFERRED_API", "anthropic")
-        return "anthropic", None, anthropic_token, "claude-3-5-sonnet-20240620"
+        return "anthropic", None, anthropic_token, anthropic_model
     else:
         print("Error: Neither OpenAI nor Anthropic API key is set.")
         try:
@@ -450,7 +518,7 @@ def determine_api_to_use():
                 application.run()
                 return determine_api_to_use()  # Try again
             else:
-                raise  # Re-raise if it's a different RuntimeError  
+                raise  # Re-raise if it's a different RuntimeError
 
 # Github setup
 def get_github_token():

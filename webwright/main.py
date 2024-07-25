@@ -18,13 +18,12 @@ from prompt_toolkit.keys import Keys
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.clipboard import ClipboardData
 
-from prompt_toolkit.shortcuts import radiolist_dialog, input_dialog
-
-from lib.util import setup_ssh_key, get_openai_api_key, set_openai_api_key, get_anthropic_api_key, set_anthropic_api_key
+from lib.util import setup_ssh_key 
+from lib.util import select_openai_model, select_anthropic_model
 from lib.util import get_username
 from lib.util import format_response
 from lib.util import determine_api_to_use
-from lib.util import setup_logging, get_logger
+from lib.util import get_logger
 
 from halo import Halo
 
@@ -97,9 +96,9 @@ def custom_exception_handler(loop, context):
     else:
         loop.default_exception_handler(context)
 
-async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, api_to_use):
+async def process_shell_query(username, query, openai_token, anthropic_token, conversation_history, api_to_use, model_to_use):
     try:
-        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use, history=conversation_history)
+        success, results = await ai(username=username, query=query, openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use, model_to_use=model_to_use, history=conversation_history)
         
         logger.debug(f"AI response: {results}")
 
@@ -137,7 +136,7 @@ async def process_shell_query(username, query, openai_token, anthropic_token, co
         return False, {"error": error_message}
 
 
-async def main(openai_token, anthropic_token, api_to_use="openai"):
+async def main(openai_token, anthropic_token, api_to_use="openai", model_to_use=None):
     conversation_history = []  # Initialize conversation history
 
     while True:
@@ -147,7 +146,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
             
             prompt_text = [
                 ('class:username', f"{username}@"),
-                ('class:model', f"{api_to_use} "),
+                ('class:model', f"{api_to_use}/{model_to_use} "),
                 ('class:path', f"{current_path} $ ")
             ]
 
@@ -164,7 +163,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
             conversation_history.append({"role": "user", "content": question})
             # logger.info(f"Main: Added user message to history. Current history: {conversation_history}")
             
-            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, api_to_use)
+            success, results = await process_shell_query(username, question, openai_token, anthropic_token, conversation_history, api_to_use, model_to_use)
             
             if success and "explanation" in results:
                 formatted_response = format_response(results['explanation'])
@@ -185,7 +184,7 @@ async def main(openai_token, anthropic_token, api_to_use="openai"):
 
 def entry_point():
     # Get configs
-    api_to_use, openai_token, anthropic_token, function_call_model = determine_api_to_use()
+    api_to_use, openai_token, anthropic_token, model_to_use = determine_api_to_use()
 
     if api_to_use is None:
         print("No API selected. Exiting program.")
@@ -197,6 +196,18 @@ def entry_point():
         print("Use OPENAI_API_KEY for OpenAI or ANTHROPIC_API_KEY for Anthropic.")
         sys.exit(1)
     
+    # If using OpenAI, set the model
+    if openai_token and model_to_use is None:
+        selected_model = select_openai_model(api_key=openai_token)
+        if selected_model:
+            model_to_use = selected_model
+
+    # If using OpenAI, set the model
+    if anthropic_token and model_to_use is None:
+        selected_model = select_anthropic_model(api_key=anthropic_token)
+        if selected_model:
+            model_to_use = selected_model
+
     setup_ssh_key()
 
     # Clear the screen
@@ -207,7 +218,7 @@ def entry_point():
     loop.set_exception_handler(custom_exception_handler)
 
     try:
-        loop.run_until_complete(main(openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use))
+        loop.run_until_complete(main(openai_token=openai_token, anthropic_token=anthropic_token, api_to_use=api_to_use, model_to_use=model_to_use))
     except KeyboardInterrupt:
         print("system> KeyboardInterrupt received, shutting down...")
     finally:
@@ -219,7 +230,6 @@ def entry_point():
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
         print_formatted_text(FormattedText([('class:success', "system> Shutdown complete.")]), style=custom_style)
-
 
 if __name__ == "__main__":
     entry_point()

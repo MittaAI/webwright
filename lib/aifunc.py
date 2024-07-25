@@ -59,7 +59,7 @@ async def execute_function_by_name(function_name, **kwargs):
         return json.dumps({"error": str(e)})
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def openai_chat_completion_request(messages=None, openai_token=None, tools=None, tool_choice="auto", model="gpt-4o"):
+async def openai_chat_completion_request(messages=None, openai_token=None, tools=None, tool_choice="auto", model_to_use="gpt-4o"):
     client = AsyncOpenAI(api_key=openai_token)
 
     if tools:
@@ -74,7 +74,7 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
     # logging.info(f"Messages: {messages}")
     try:
         response = await client.chat.completions.create(
-            model=model,
+            model=model_to_use,
             messages=messages,
             tools=tools,
             tool_choice=tool_choice
@@ -86,7 +86,7 @@ async def openai_chat_completion_request(messages=None, openai_token=None, tools
 
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def anthropic_chat_completion_request(messages=None, anthropic_token=None, tools=None, model="claude-3-opus-20240229"):
+async def anthropic_chat_completion_request(messages=None, anthropic_token=None, tools=None, model_to_use="claude-3-opus-20240229"):
     """
     Make an asynchronous request to Anthropic's chat completion API.
     """
@@ -115,7 +115,7 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
 
     try:
         response = await client.messages.create(
-            model=model,
+            model=model_to_use,
             max_tokens=1024,
             messages=messages,
             tools=anthropic_tools,
@@ -128,7 +128,7 @@ async def anthropic_chat_completion_request(messages=None, anthropic_token=None,
         raise
 
 
-async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", api_to_use="openai", upload_dir=UPLOAD_DIR, history=None):
+async def ai(username="anonymous", query="help", openai_token="", anthropic_token="", api_to_use="openai", upload_dir=UPLOAD_DIR, model_to_use=None, history=None):
     # Ensure text_content is initialized
     text_content = ""
     
@@ -139,6 +139,9 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         raise ValueError("OpenAI token is required when api_to_use is 'openai'")
     elif api_to_use == "anthropic" and not anthropic_token:
         raise ValueError("Anthropic token is required when api_to_use is 'anthropic'")
+    
+    if not model_to_use:
+        raise ValueError("You must define a model to use.")
     
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
@@ -160,7 +163,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
         spinner.start()
         
         if api_to_use == "openai":
-            chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
+            chat_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, model_to_use=model_to_use, tools=tools)
 
             if not chat_response:
                 spinner.stop()
@@ -185,7 +188,7 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
                 return True, {"response": assistant_message.content}
         
         else:  # Anthropic
-            chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
+            chat_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, model_to_use=model_to_use, tools=tools)
             if not chat_response:
                 spinner.stop()
                 return False, {"error": "Failed to get a response from Anthropic"}
@@ -287,13 +290,13 @@ async def ai(username="anonymous", query="help", openai_token="", anthropic_toke
 
     # Formulate final response using the tool results
     if api_to_use == "openai":
-        final_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, tools=tools)
+        final_response = await openai_chat_completion_request(messages=messages, openai_token=openai_token, model_to_use=model_to_use, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from OpenAI"}
         final_message = final_response.choices[0].message.content
         return True, {"response": final_message}
     else:  # Anthropic
-        final_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, tools=tools)
+        final_response = await anthropic_chat_completion_request(messages=messages, anthropic_token=anthropic_token, model_to_use=model_to_use, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from Anthropic"}
         
