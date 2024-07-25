@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import google.generativeai as genai
 from lib.function_wrapper import function_info_decorator
@@ -83,10 +82,10 @@ def apply_code_diff_to_file(diff: str, update_query: str, file_path: str, overri
     will return an error message.
     """
     config = Config()
-    
+
     try:
         # Get Gemini API key
-        gemini_api_key = get_gemini_api_key()
+        gemini_api_key = config.get_gemini_api_key()
         if not gemini_api_key:
             logger.warning("Gemini API key not available. Some functionality may be limited.")
             return {"error": "Gemini API key not available"}
