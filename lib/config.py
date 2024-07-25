@@ -437,12 +437,12 @@ Host {git_host}
         try:
             github_token = self.get_config_value("config", "GITHUB_API_TOKEN")
             if github_token:
-                error = check_github_token(github_token)
-                if error is True:
-                    return {"token": github_token, "error": None}
-                else:
-                    error_message = f"Config GitHub token failed: {error}"
-                    logger.error(error_message)
+                # Initialize GitHub API client
+                g = Github(github_token)
+                github_repo = g.get_repo(f"{org_name}/{repo_name}")
+                print(github_repo)
+                return {"token": github_token, "error": None}
+            
         except Exception as e:
             error_message = f"Failed to load GitHub token from config: {e}"
             logger.error(error_message)
