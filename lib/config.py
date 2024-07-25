@@ -423,22 +423,21 @@ Host {git_host}
 
         logger = logging.getLogger(__name__)
 
-        def check_github_token(token, username):
+        def check_github_token(token):
             try:
                 g = Github(token)
-                user = g.get_user().login
-                if username and user != username:
-                    raise Exception("GitHub token does not match the provided username.")
+                # Using get_rate_limit to check the validity of the token
+                rate_limit = g.get_rate_limit().core
+                if rate_limit.remaining == 0:
+                    raise Exception("GitHub API rate limit exceeded. Cannot verify token now.")
                 return True
             except Exception as e:
                 return str(e)
 
-        username = input("Enter your GitHub username: ")  # Prompt for the username at the beginning
-
         try:
             github_token = self.get_config_value("config", "GITHUB_API_TOKEN")
             if github_token:
-                error = check_github_token(github_token, username)
+                error = check_github_token(github_token)
                 if error is True:
                     return {"token": github_token, "error": None}
                 else:
@@ -450,7 +449,7 @@ Host {git_host}
 
         github_token = os.environ.get("GITHUB_TOKEN")
         if github_token:
-            error = check_github_token(github_token, username)
+            error = check_github_token(github_token)
             if error is True:
                 return {"token": github_token, "error": None}
             else:
