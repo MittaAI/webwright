@@ -39,10 +39,10 @@ UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 SYSTEM_PROMPT = "You are an intelligent assistant that helps users accomplish their tasks by breaking down their instructions into a series of executable steps.\nProvide the user with an overview of your steps, specifying the functions you plan to call for each step.\nThen call the necessary functions.\nTry to accomplish the goals in as few function calls as possible.\nIf executing a series of 3 or more functions, or modifying files, please ask the user for confirmation before executing.\n\nExample:\nHere is the plan to accomplish your task:\n\n1. Read the contents of /Users/johndoe/Documents/project/data_analysis.py to understand the original implementation using the 'read_file' function.\n2. Create a new version of the script to improve data processing efficiency and save it under a new filename in the same directory using the 'write_file' function.\n3. Execute both scripts to compare their performance using the 'execute_script' function.\n\nI will need to:\n\n- Read the original script using 'read_file'.\n- Write the new script using 'write_file'.\n- Execute both scripts using 'execute_script'.\n\nShall I proceed with these steps?"
 
 async def execute_function_by_name(function_name, **kwargs):
-    logging.info(f"Calling {function_name} with arguments {kwargs}")
+    logger.info(f"Calling {function_name} with arguments {kwargs}")
     
     if function_name not in callable_registry:
-        logging.error(f"Function {function_name} not found in registry")
+        logger.error(f"Function {function_name} not found in registry")
         return json.dumps({"error": f"Function {function_name} not found in registry"})
     
     try:
