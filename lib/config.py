@@ -423,15 +423,26 @@ Host {git_host}
 
         logger = logging.getLogger(__name__)
 
+        def check_github_token(token, username):
+            try:
+                g = Github(token)
+                user = g.get_user().login
+                if username and user != username:
+                    raise Exception("GitHub token does not match the provided username.")
+                return True
+            except Exception as e:
+                return str(e)
+
+        username = input("Enter your GitHub username: ")  # Prompt for the username at the beginning
+
         try:
             github_token = self.get_config_value("config", "GITHUB_API_TOKEN")
             if github_token:
-                try:
-                    g = Github(github_token)
-                    g.get_user().login
+                error = check_github_token(github_token, username)
+                if error is True:
                     return {"token": github_token, "error": None}
-                except Exception as e:
-                    error_message = f"Config GitHub token failed: {e}"
+                else:
+                    error_message = f"Config GitHub token failed: {error}"
                     logger.error(error_message)
         except Exception as e:
             error_message = f"Failed to load GitHub token from config: {e}"
@@ -439,15 +450,15 @@ Host {git_host}
 
         github_token = os.environ.get("GITHUB_TOKEN")
         if github_token:
-            try:
-                g = Github(github_token)
-                g.get_user().login
+            error = check_github_token(github_token, username)
+            if error is True:
                 return {"token": github_token, "error": None}
-            except Exception as e:
-                error_message = f"Environment GitHub token failed: {e}"
+            else:
+                error_message = f"Environment GitHub token failed: {error}"
                 logger.error(error_message)
 
         return {"token": None, "error": "GitHub token not available from both environment and config."}
+
 
     def clear_token_cache(self):
         self.check_openai_token.cache_clear()
