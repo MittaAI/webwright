@@ -56,27 +56,6 @@ class Config:
     def set_username(self, username):
         self.set_config_value("config", "username", username)
         return username
-
-    def set_github_token(self, token):
-        """
-        Set and verify the GitHub API token.
-
-        :param token: The GitHub API token to set
-        :return: A tuple (success, message) indicating the result of the operation
-        """
-        try:
-            # Verify the token before saving
-            g = Github(token)
-            g.get_user().login  # This will raise an exception if the token is invalid
-            
-            # Token is valid, save it
-            self.set_config_value("config", "GITHUB_API_KEY", token)
-            logger.info("GitHub API token set and verified successfully.")
-            return True, "GitHub API token set and verified successfully."
-        except Exception as e:
-            error_message = f"Invalid GitHub API token: {str(e)}"
-            logger.error(error_message)
-            return False, error_message
         
     def get_openai_api_key(self):
         openai_token = os.getenv("OPENAI_API_KEY") or self.get_config_value("config", "OPENAI_API_KEY")
@@ -416,48 +395,58 @@ Host {git_host}
         os.chmod(ssh_config_path, 0o600)
         logger.info(f"Git is now configured to use SSH key: {ssh_key_path}")
 
-    def get_github_token(self):
-        from github import Github
-        import os
-        import logging
+    def set_github_token(self, token):
+        """
+        Set and verify the GitHub API token.
 
-        logger = logging.getLogger(__name__)
-
-        def check_github_token(token):
-            try:
-                g = Github(token)
-                # Using get_rate_limit to check the validity of the token
-                rate_limit = g.get_rate_limit().core
-                if rate_limit.remaining == 0:
-                    raise Exception("GitHub API rate limit exceeded. Cannot verify token now.")
-                return True
-            except Exception as e:
-                return str(e)
-
+        :param token: The GitHub API token to set
+        :return: A tuple (success, message) indicating the result of the operation
+        """
         try:
-            github_token = self.get_config_value("config", "GITHUB_API_TOKEN")
+            # Verify the token before saving
+            g = Github(token)
+            g.get_user().login  # This will raise an exception if the token is invalid
+            
+            # Token is valid, save it
+            self.set_config_value("config", "GITHUB_API_KEY", token)
+            logger.info("GitHub API token set and verified successfully.")
+            return True, "GitHub API token set and verified successfully."
+        except Exception as e:
+            error_message = f"Invalid GitHub API token: {str(e)}"
+            logger.error(error_message)
+            return False, error_message
+        
+    def get_github_token(self):
+        try:
+            github_token = self.get_config_value("config", "GITHUB_API_KEY")
+
             if github_token:
                 # Initialize GitHub API client
                 g = Github(github_token)
-                github_repo = g.get_repo(f"{org_name}/{repo_name}")
-                print(github_repo)
+                g.get_user().login  # This will raise an exception if the token is invalid
+
                 return {"token": github_token, "error": None}
             
         except Exception as e:
+            print("failed first one")
             error_message = f"Failed to load GitHub token from config: {e}"
             logger.error(error_message)
 
-        github_token = os.environ.get("GITHUB_TOKEN")
-        if github_token:
-            error = check_github_token(github_token)
-            if error is True:
-                return {"token": github_token, "error": None}
-            else:
-                error_message = f"Environment GitHub token failed: {error}"
-                logger.error(error_message)
+        try:
+            github_token = os.environ.get("GITHUB_TOKEN")
+            if github_token:
+                if github_token:
+                    # Initialize GitHub API client
+                    g = Github(github_token)
+                    g.get_user().login  # This will raise an exception if the token is invalid
 
-        return {"token": None, "error": "GitHub token not available from both environment and config."}
+                    return {"token": github_token, "error": None}
+        except Exception as e:
+            print("failed second one")
+            error_message = f"Failed to load GitHub token from environment: {e}"
+            logger.error(error_message)
 
+        return {"token": None, "error": error_message}
 
     def clear_token_cache(self):
         self.check_openai_token.cache_clear()
