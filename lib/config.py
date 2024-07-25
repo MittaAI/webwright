@@ -418,6 +418,7 @@ Host {git_host}
         
     def get_github_token(self):
         try:
+            print("using config")
             github_token = self.get_config_value("config", "GITHUB_API_KEY")
 
             if github_token:
@@ -428,21 +429,22 @@ Host {git_host}
                 return {"token": github_token, "error": None}
             
         except Exception as e:
-            print("failed first one")
             error_message = f"Failed to load GitHub token from config: {e}"
             logger.error(error_message)
 
         try:
+            print("using env")
             github_token = os.environ.get("GITHUB_TOKEN")
+        
             if github_token:
-                if github_token:
-                    # Initialize GitHub API client
-                    g = Github(github_token)
-                    g.get_user().login  # This will raise an exception if the token is invalid
-
-                    return {"token": github_token, "error": None}
+                # Initialize GitHub API client
+                g = Github(github_token)
+                g.get_user().login  # This will raise an exception if the token is invalid
+            
+                return {"token": github_token, "error": None}
+            else:
+                error_message = "GitHub token not found in environment."
         except Exception as e:
-            print("failed second one")
             error_message = f"Failed to load GitHub token from environment: {e}"
             logger.error(error_message)
 
