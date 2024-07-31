@@ -3,6 +3,7 @@ import os
 import asyncio
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from halo import Halo
+from litellm  import completion, acompletion, stream_chunk_builder
 
 # OpenAI imports
 from openai import AsyncOpenAI
@@ -24,6 +25,10 @@ from git import Repo
 from lib.util import custom_style
 from prompt_toolkit.formatted_text import FormattedText
 
+from prompt_toolkit import PromptSession, print_formatted_text
+from lib.util import format_response
+
+import sys
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -35,6 +40,7 @@ logger = get_logger()
 # Storage
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
+
 
 SYSTEM_PROMPT = """
 You are an intelligent assistant that helps users accomplish their tasks efficiently. Follow these guidelines:
@@ -74,35 +80,41 @@ Assistant: Thank you for the confirmation. I'll proceed with the plan.
 Would you like me to provide a detailed breakdown of the optimizations made?
 """
 
+def clear_lines(num_lines):
+    for _ in range(num_lines):
+        sys.stdout.write('\033[F')  # Move cursor up one line
+        sys.stdout.write('\033[K')  # Clear the line
+    sys.stdout.flush()
+
 async def execute_function_by_name(function_name, **kwargs):
     logger.info(f"Calling {function_name} with arguments {kwargs}")
-    
+
     if function_name not in callable_registry:
         logger.error(f"Function {function_name} not found in registry")
         return json.dumps({"error": f"Function {function_name} not found in registry"})
-    
+
     try:
         func_logger = setup_function_logging(function_name)
         func_logger.info(f"Function {function_name} called with arguments: {kwargs}")
         function_to_call = callable_registry[function_name]
-        
+
         if asyncio.iscoroutinefunction(function_to_call):
             # If it's a coroutine function, await it
             result = await function_to_call(**kwargs)
         else:
             # If it's a regular function, run it in a thread to avoid blocking
             result = await asyncio.to_thread(function_to_call, **kwargs)
-        
+
         func_logger.info(f"Function {function_name} executed successfully with result: {result}")
         return json.dumps(result) if not isinstance(result, str) else result
-    
+
     except Exception as e:
         func_logger.error(f"Function {function_name} failed with error: {e}")
         return json.dumps({"error": str(e)})
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def openai_chat_completion_request(messages=None, config=None, tools=None, tool_choice="auto"):
-    client = AsyncOpenAI(api_key=config.get_openai_api_key())
+async def litelm_chat_completion_request(messages=None, config = None, model="claude-3-opus-20240229", tools=None, tool_choice="auto"):
+    os.environ["OPENAI_API_KEY"] = config.get_openai_api_key()
 
     if tools:
         function_names = [tool['function']['name'] for tool in tools]
@@ -114,60 +126,51 @@ async def openai_chat_completion_request(messages=None, config=None, tools=None,
     })
 
     try:
-        response = await client.chat.completions.create(
-            model=config.get_config_value("config", "OPENAI_MODEL"),
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice
-        )
-        return response
-    except Exception as e:
-        logger.error("Unable to generate OpenAI ChatCompletion response: %s", e)
-        raise
+      full_res = []
+      previous_num_lines = 0
+      response = await acompletion(
+          model=config.get_config_value("config", "OPENAI_MODEL"),
+          #model="claude-3-opus-20240229",
+          messages=messages,
+          tools=tools,
+          tool_choice=tool_choice,
+          stream=True
+      )
+      async for chunk in response:
+          full_res.append(chunk)
+          content = chunk.choices[0].delta.content
+          if content:
+              reconstructed_res = stream_chunk_builder(full_res, messages=messages)
+              raw_text = reconstructed_res.choices[0].message.content
+              lines = raw_text.split('\n')
+              num_lines = len(lines) + 1
+              formatted_text = format_response(raw_text)
 
-@retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def anthropic_chat_completion_request(messages=None, config=None, tools=None):
-    client = AsyncAnthropic(api_key=config.get_anthropic_api_key())
-    
-    if tools:
-        anthropic_tools = []
-        for tool in tools:
-            if 'function' in tool:
-                anthropic_tools.append({
-                    "name": tool['function']['name'],
-                    "description": tool['function']['description'],
-                    "input_schema": tool['function']['parameters'],
-                })
-            else:
-                anthropic_tools.append(tool)
-        
-        function_names = [tool['name'] for tool in anthropic_tools]
-    else:
-        anthropic_tools = None
+              clear_lines(previous_num_lines)
+              print_formatted_text(formatted_text, style=custom_style)
 
-    try:
-        response = await client.messages.create(
-            model=config.get_config_value("config", "ANTHROPIC_MODEL"),
-            max_tokens=2048,
-            messages=messages,
-            tools=anthropic_tools,
-            system=SYSTEM_PROMPT
-        )
-        return response
+              previous_num_lines = num_lines
+
+
+      print("\n")
+
+      reconstructed_res = stream_chunk_builder(full_res, messages=messages)
+      return reconstructed_res
+
     except Exception as e:
-        logger.error("Unable to generate Anthropic ChatCompletion response: %s", e)
-        raise
+        print(e)
+        return None
 
 async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_DIR, history=None):
     text_content = ""
-    
+
     api_to_use = config.get_config_value("config", "PREFERRED_API")
     if api_to_use not in ["openai", "anthropic"]:
         raise ValueError("api_to_use must be either 'openai' or 'anthropic'")
-    
+
     user_dir = os.path.join(upload_dir, username)
     create_and_check_directory(user_dir)
-    
+
     if history is None:
         history = []
 
@@ -179,72 +182,34 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
 
     max_function_calls = 6
     function_call_count = 0
-    
+
     while function_call_count < max_function_calls:
-        spinner = Halo(text='Calling the model...', spinner='dots')
-        spinner.start()
-        
-        if api_to_use == "openai":
-            chat_response = await openai_chat_completion_request(messages=messages, config=config, tools=tools)
+        chat_response = await litelm_chat_completion_request(messages=messages, config=config, tools=tools)
 
-            if not chat_response:
-                spinner.stop()
-                return False, {"error": "Failed to get a response from OpenAI"}
-            assistant_message = chat_response.choices[0].message
-            
-            if assistant_message.tool_calls:
-                function_calls = []
-                for tool_call in assistant_message.tool_calls:
-                    try:
-                      function_calls.append({
-                        "name": tool_call.function.name,
-                        "arguments": json.loads(tool_call.function.arguments),
-                        "id": tool_call.id
-                      })
-                    except Exception as e:
-                      print(f"Failed to process tool call: {tool_call}")
-                      print(f"Error: {e}")
-            else:
-                spinner.stop()
-                return True, {"response": assistant_message.content}
-        
-        else:  # Anthropic
-            chat_response = await anthropic_chat_completion_request(messages=messages, config=config, tools=tools)
-            if not chat_response:
-                spinner.stop()
-                return False, {"error": "Failed to get a response from Anthropic"}
-            
-            logger.info(f"Anthropic response: {chat_response}")
-            
+        if not chat_response:
+            return False, {"error": "No response from api call"}
+        assistant_message = chat_response.choices[0].message
+
+        if assistant_message.tool_calls:
             function_calls = []
-
-            for content_item in chat_response.content:
-                if isinstance(content_item, TextBlock):
-                    text_content += content_item.text
-                elif isinstance(content_item, ToolUseBlock):
-                    function_calls.append({
-                        "name": content_item.name,
-                        "arguments": content_item.input,
-                        "id": content_item.id
-                    })
-
-            logger.info(f"Extracted function calls: {function_calls}")
-            logger.info(f"Extracted text content: {text_content}")
-
-            if not function_calls:
-                spinner.stop()
-                return True, {"response": text_content.strip()}
-
-        spinner.stop()
+            for tool_call in assistant_message.tool_calls:
+                try:
+                  function_calls.append({
+                    "name": tool_call.function.name,
+                    "arguments": json.loads(tool_call.function.arguments),
+                    "id": tool_call.id
+                  })
+                except Exception as e:
+                  print(f"Failed to process tool call: {tool_call}")
+                  print(f"Error: {e}")
+        else:
+            return True, {"response": assistant_message.content}
 
         if not function_calls:
             break
 
         async def execute_function(func_call):
             print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]), style=custom_style)
-
-            if func_call["name"] == "set_api_config_dialog":
-                func_call["arguments"]["spinner"] = spinner
 
             result = await execute_function_by_name(func_call["name"], **func_call["arguments"])
             return {"id": func_call["id"], "result": result}
@@ -261,69 +226,27 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
 
         for func_call in function_calls:
             func_call["arguments"].pop("spinner", None)
-
-            if api_to_use == "openai":
-                messages.append({
-                    "role": "assistant",
-                    "content": None,
-                    "function_call": {
-                        "name": func_call["name"],
-                        "arguments": json.dumps(func_call["arguments"])
-                    }
-                })
-            else:  # Anthropic
-                new_message_content.append({
-                    "type": "tool_use",
-                    "id": func_call["id"],
-                    "name": func_call["name"],
-                    "input": func_call["arguments"]
-                })
-
-        if api_to_use == "anthropic" and new_message_content:
             messages.append({
                 "role": "assistant",
-                "content": new_message_content
+                "content": None,
+                "function_call": {
+                    "name": func_call["name"],
+                    "arguments": json.dumps(func_call["arguments"])
+                }
             })
 
         for func_call, result in zip(function_calls, function_results):
-            if api_to_use == "openai":
-                messages.append({
-                    "role": "function",
-                    "name": func_call["name"],
-                    "content": result["result"]
-                })
-            else:  # Anthropic
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": func_call["id"],
-                            "content": result["result"]
-                        }
-                    ]
-                })
+            messages.append({
+                "role": "function",
+                "name": func_call["name"],
+                "content": result["result"]
+            })
 
         function_call_count += len(function_calls)
 
     # Formulate final response using the tool results
-    if api_to_use == "openai":
-        final_response = await openai_chat_completion_request(messages=messages, config=config, tools=tools)
-        if not final_response:
-            return False, {"error": "Failed to get a final response from OpenAI"}
-        final_message = final_response.choices[0].message.content
-        return True, {"response": final_message}
-    else:  # Anthropic
-        final_response = await anthropic_chat_completion_request(messages=messages, config=config, tools=tools)
-        if not final_response:
-            return False, {"error": "Failed to get a final response from Anthropic"}
-        
-        final_text_content = ""
-        for content_item in final_response.content:
-            if isinstance(content_item, TextBlock):
-                final_text_content += content_item.text
-        
-        if not final_text_content:
-            return False, {"error": "No text content in Anthropic final response"}
-        
-        return True, {"response": final_text_content.strip()}
+    final_response = await litelm_chat_completion_request(messages=messages, config=config, tools=tools)
+    if not final_response:
+        return False, {"error": "Failed to get a final response from OpenAI"}
+    final_message = final_response.choices[0].message.content
+    return True, {"response": final_message}

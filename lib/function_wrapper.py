@@ -41,7 +41,7 @@ class FunctionWrapper:
             "name": function_name,
             "description": function_description,
             "parameters": parameters,
-            "return_type": return_type,
+            #"return_type": return_type, This doesnt seem to be necessary for openai and causes anthropic to fail
         }
         return function_info
 
