@@ -161,8 +161,6 @@ async def main(config):
             success, results = await process_shell_query(username, question, config, conversation_history)
             
             if success and "explanation" in results:
-                formatted_response = format_response(results['explanation'])
-                print_formatted_text(formatted_response, style=custom_style)
                 conversation_history.append({"role": "assistant", "content": results["explanation"]})
             elif not success and "error" in results:
                 # Error messages are already handled in process_shell_query

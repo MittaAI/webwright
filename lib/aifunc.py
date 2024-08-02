@@ -3,6 +3,7 @@ import os
 import asyncio
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from halo import Halo
+from litellm  import completion, acompletion, stream_chunk_builder
 
 # OpenAI imports
 from openai import AsyncOpenAI
@@ -24,6 +25,10 @@ from git import Repo
 from lib.util import custom_style
 from prompt_toolkit.formatted_text import FormattedText
 
+from prompt_toolkit import PromptSession, print_formatted_text
+from lib.util import format_response
+
+import sys
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -100,9 +105,15 @@ async def execute_function_by_name(function_name, **kwargs):
         func_logger.error(f"Function {function_name} failed with error: {e}")
         return json.dumps({"error": str(e)})
 
+def clear_lines(num_lines):
+    for _ in range(num_lines):
+        sys.stdout.write('\033[F')  # Move cursor up one line
+        sys.stdout.write('\033[K')  # Clear the line
+    sys.stdout.flush()
+
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
-async def openai_chat_completion_request(messages=None, config=None, tools=None, tool_choice="auto"):
-    client = AsyncOpenAI(api_key=config.get_openai_api_key())
+async def litelm_chat_completion_request(messages=None, config = None, tools=None, tool_choice="auto"):
+    os.environ["OPENAI_API_KEY"] = config.get_openai_api_key()
 
     if tools:
         function_names = [tool['function']['name'] for tool in tools]
@@ -114,16 +125,39 @@ async def openai_chat_completion_request(messages=None, config=None, tools=None,
     })
 
     try:
-        response = await client.chat.completions.create(
-            model=config.get_config_value("config", "OPENAI_MODEL"),
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice
-        )
-        return response
+      full_res = []
+      previous_num_lines = 0
+      response = await acompletion(
+          model=config.get_config_value("config", "OPENAI_MODEL"),
+          messages=messages,
+          tools=tools,
+          tool_choice=tool_choice,
+          stream=True
+      )
+      async for chunk in response:
+          full_res.append(chunk)
+          content = chunk.choices[0].delta.content
+          if content:
+              reconstructed_res = stream_chunk_builder(full_res, messages=messages)
+              raw_text = reconstructed_res.choices[0].message.content
+              lines = raw_text.split('\n')
+              num_lines = len(lines) + 1
+              formatted_text = format_response(raw_text)
+
+              clear_lines(previous_num_lines)
+              print_formatted_text(formatted_text, style=custom_style)
+
+              previous_num_lines = num_lines
+
+
+      print("\n")
+
+      reconstructed_res = stream_chunk_builder(full_res, messages=messages)
+      return reconstructed_res
+
     except Exception as e:
-        logger.error("Unable to generate OpenAI ChatCompletion response: %s", e)
-        raise
+        print(e)
+        return None
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
 async def anthropic_chat_completion_request(messages=None, config=None, tools=None):
@@ -153,6 +187,15 @@ async def anthropic_chat_completion_request(messages=None, config=None, tools=No
             tools=anthropic_tools,
             system=SYSTEM_PROMPT
         )
+
+        res_content = ""
+        for content_item in response.content:
+            if isinstance(content_item, TextBlock):
+                res_content += content_item.text
+
+        formatted_text = format_response(res_content)
+        print_formatted_text(formatted_text, style=custom_style)
+
         return response
     except Exception as e:
         logger.error("Unable to generate Anthropic ChatCompletion response: %s", e)
@@ -181,14 +224,10 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
     function_call_count = 0
     
     while function_call_count < max_function_calls:
-        spinner = Halo(text='Calling the model...', spinner='dots')
-        spinner.start()
-        
         if api_to_use == "openai":
-            chat_response = await openai_chat_completion_request(messages=messages, config=config, tools=tools)
+            chat_response = await litelm_chat_completion_request(messages=messages, config=config, tools=tools)
 
             if not chat_response:
-                spinner.stop()
                 return False, {"error": "Failed to get a response from OpenAI"}
             assistant_message = chat_response.choices[0].message
             
@@ -205,10 +244,12 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
                       print(f"Failed to process tool call: {tool_call}")
                       print(f"Error: {e}")
             else:
-                spinner.stop()
                 return True, {"response": assistant_message.content}
         
         else:  # Anthropic
+            spinner = Halo(text='Calling the model...', spinner='dots')
+            spinner.start()
+
             chat_response = await anthropic_chat_completion_request(messages=messages, config=config, tools=tools)
             if not chat_response:
                 spinner.stop()
@@ -234,8 +275,7 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
             if not function_calls:
                 spinner.stop()
                 return True, {"response": text_content.strip()}
-
-        spinner.stop()
+            spinner.stop()
 
         if not function_calls:
             break
@@ -308,7 +348,7 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
 
     # Formulate final response using the tool results
     if api_to_use == "openai":
-        final_response = await openai_chat_completion_request(messages=messages, config=config, tools=tools)
+        final_response = await litelm_chat_completion_request(messages=messages, config=config, tools=tools)
         if not final_response:
             return False, {"error": "Failed to get a final response from OpenAI"}
         final_message = final_response.choices[0].message.content
