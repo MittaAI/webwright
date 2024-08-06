@@ -2,7 +2,7 @@ import os
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
-def write_code_to_filesho(file_path: str, code: str, is_standalone: bool = False) -> dict:
+def write_code_to_files(file_path: str, code: str, is_standalone: bool = False) -> dict:
     """
     1. Writes code to a specified file, only if the file doesn't exist.
     2. If the file exists, refuses to update and suggests using apply_code_diff_to_file.

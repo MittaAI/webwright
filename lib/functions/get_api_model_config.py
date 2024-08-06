@@ -8,7 +8,7 @@ async def get_api_model_config(config_type: str, spinner=None) -> dict:
     Configure, validate, and retrieve API settings for OpenAI or Anthropic. Will return the model we're talking to as well.
 
     Asked about what model you are, or your identity? Use this function!
-    
+
     This function performs the following tasks based on the config_type:
     1. For 'switch_provider':
     - Allows switching between OpenAI and Anthropic as the preferred API
