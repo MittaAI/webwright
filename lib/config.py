@@ -8,6 +8,7 @@ from github import Github
 from coolname import generate_slug
 from lib.util import get_logger
 from functools import lru_cache
+from substrate import ComputeText, Substrate
 
 logger = get_logger()
 
@@ -444,3 +445,46 @@ Host {git_host}
         self.check_openai_token.cache_clear()
         self.check_anthropic_token.cache_clear()
         self.check_gemini_token.cache_clear()
+
+    def get_substrate_token(self):
+        substrate_token = os.getenv("SUBSTRATE_API_KEY") or self.get_config_value("config", "SUBSTRATE_API_KEY")
+        
+        if substrate_token == "NONE":
+            return {"token": None, "error": "Substrate API key is set to NONE in config"}
+
+        if substrate_token and self.check_substrate_token(substrate_token):
+            self.set_config_value("config", "SUBSTRATE_API_KEY", substrate_token)
+            return {"token": substrate_token, "error": None}
+
+        substrate_token = input_dialog(
+            title="Substrate API Key",
+            text="Enter your Substrate API key (Enter to skip):"
+        ).run()
+
+        if substrate_token == '':
+            logger.info("Substrate token entry cancelled.")
+            self.set_config_value("config", "SUBSTRATE_API_KEY", "NONE")
+            return {"token": None, "error": "Substrate token entry cancelled"}
+
+        if substrate_token:
+            if self.check_substrate_token(substrate_token):
+                self.set_config_value("config", "SUBSTRATE_API_KEY", substrate_token)
+                logger.info("Substrate API token set and verified successfully.")
+                return {"token": substrate_token, "error": None}
+            else:
+                error_message = "Invalid Substrate token."
+                logger.error(error_message)
+                return {"token": None, "error": error_message}
+
+        return {"token": None, "error": "No valid Substrate API token found"}
+
+    def check_substrate_token(self, substrate_token):
+        try:
+            substrate = Substrate(api_key=substrate_token)
+            story = ComputeText(prompt="test")
+            substrate.run(story)
+            logger.info("Substrate API token verified successfully.")
+            return True
+        except Exception as e:
+            logger.error(f"Error verifying Substrate API token: {str(e)}")
+            return False
