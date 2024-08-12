@@ -98,8 +98,6 @@ manager.create_node(
     [Insert step-by-step instructions from {cooking_instructions}]
     
     Baking Temperature: {temperature.value} {temperature.unit}
-    
-    Ensure all placeholders are replaced with the actual information.
     """,
     model="claude-3-5-sonnet-20240620",
     node_name="final_recipe"
@@ -109,14 +107,24 @@ manager.create_node(
 result = manager.run_computation("final_recipe")
 
 # Safely access and print the final recipe
+print(manager.node_registry)
 try:
     final_recipe_node = manager.node_registry['final_recipe']['node']
     final_recipe_text = result.get(final_recipe_node)
+    print(dir(final_recipe_text))
     print("Final Recipe:")
     print(final_recipe_text.text)  # Access the .text attribute for the final recipe text
 except ValueError as e:
     print(f"Error retrieving final recipe: {e}")
-
+"""
+report = ComputeText(
+    prompt=sb.format("Write a short summary about {name} and make sure to use the following bio: {bio}",
+                     name=author.future.json_object["name"],
+                     bio=author.future.json_object["bio"])
+)
+result = substrate.run(report)
+print(result.get(report).text)
+"""
 # Access to the structured data (ingredients and temperature)
 try:
     ingredients_node = manager.node_registry['ingredients']['node']

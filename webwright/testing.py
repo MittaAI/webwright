@@ -44,7 +44,7 @@ manager.create_node(
 )
 
 # Run the entire computation chain and retrieve the result
-result = manager.run_computation("final_meal_prep")
+result = manager.run_computation("baketime_temp")
 
 # Output the final meal prep instructions
 print(f"Final Meal Preparation Instructions:\n\n{result.get(manager.node_registry['final_meal_prep']['node']).text}")
