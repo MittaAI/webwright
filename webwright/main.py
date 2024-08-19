@@ -118,6 +118,8 @@ async def process_shell_query(username, query, config, conversation_history):
         print_formatted_text(FormattedText([('class:error', f"system> {error_message}")]), style=custom_style)
         logger.error(error_message)
         logger.error(traceback.format_exc())
+
+        print(traceback.format_exc())
         return False, {"error": error_message}
 
 async def main(config):
