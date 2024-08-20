@@ -24,10 +24,8 @@ from git import Repo
 from lib.util import custom_style
 from prompt_toolkit.formatted_text import FormattedText
 
-import ollama
-
-# This a modified 
-
+from langchain_ollama import ChatOllama
+from langchain_core.messages import HumanMessage, ToolMessage
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -41,14 +39,41 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
 SYSTEM_PROMPT = """
-You are a helpful assistant with tool calling capabilities. Respond in this format:
-{
-  "message": "Your response here",
-  "tool_calls": [{"name": function name, "arguments": dictionary of function arguments}]
-}
-If you recieve a request which does not require a tool call, respond normally and leave the functions field empty, otherwise use the message field to explain the tool call (eg. To view the contents of text.txt I will call the cat_file function). If multiple tools are used, put tools call in array format. If you recieve a request to do something you cannot normally do (ie view or modify a file) look for a function you can use to accomplish it.
+You are an intelligent assistant that helps users accomplish their tasks efficiently. Follow these guidelines:
 
-You have access to the following functions:
+1. Analyze the user's request and break it down into executable steps.
+2. Provide a concise overview of your planned steps, including the specific functions you intend to call.
+3. Execute the necessary functions to complete the task.
+4. Minimize the number of function calls while ensuring task completion.
+5. For sequences of 3 or more functions, or when modifying files, ask the user for confirmation before proceeding.
+6. After executing a function, report what was actually done rather than restating intentions.
+
+Example interaction:
+
+User: Analyze the performance of our data processing script and suggest improvements.
+
+Assistant: To accomplish this task, I plan to:
+
+1. Read the current script using 'read_file'.
+2. Analyze the script's content for performance bottlenecks.
+3. Create an optimized version using 'write_file'.
+4. Execute both versions with 'execute_script' to compare performance.
+
+This plan involves reading, writing, and executing files. Shall I proceed?
+
+User: Yes, go ahead.
+
+Assistant: Thank you for the confirmation. I'll proceed with the plan.
+
+1. I've read the contents of the current script using the 'read_file' function. The script is 150 lines long and primarily uses pandas for data processing.
+
+2. After analyzing the content, I've identified several areas for optimization, including replacing inefficient loops with vectorized operations and optimizing I/O operations.
+
+3. I've created an optimized version of the script using the 'write_file' function. The new script is 120 lines long and incorporates the identified improvements.
+
+4. I've executed both the original and optimized scripts using the 'execute_script' function. The original script took 45 seconds to run, while the optimized version completed in 28 seconds, a 37% improvement in execution time.
+
+Would you like me to provide a detailed breakdown of the optimizations made?
 """
 
 async def execute_function_by_name(function_name, **kwargs):
@@ -77,21 +102,13 @@ async def execute_function_by_name(function_name, **kwargs):
         func_logger.error(f"Function {function_name} failed with error: {e}")
         return json.dumps({"error": str(e)})
 
-async def ollama_chat_completion_request(messages=None, config=None, tools=None):
-    prompt_with_tools = SYSTEM_PROMPT + str(tools)
-    new_messages = messages.copy()
-    new_messages.insert(0, {'role': 'system', 'content': prompt_with_tools})
 
-    res = ollama.chat(
-        model='llama3.1',
-        messages=new_messages,
-    )
-
-    # convert to json format
-    res = json.loads(res['message']['content'])
-
-    return res
-
+def ollama_chat_completion_request(messages, config, tools):
+    llm = ChatOllama(
+        model = 'llama3-groq-tool-use',
+        temperature=0
+    ).bind_tools(tools)
+    return llm.invoke(messages)
 
 async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_DIR, history=None):
     text_content = ""
@@ -119,26 +136,29 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
         spinner = Halo(text='Calling the model...', spinner='dots')
         spinner.start()
         
-        chat_response = await ollama_chat_completion_request(messages=messages, config=config, tools=tools)
+        chat_response = ollama_chat_completion_request(messages=messages, config=config, tools=tools)
         assistant_message = chat_response
 
-        print(f"Assistant message: {assistant_message}")
-
-        if assistant_message["tool_calls"]:
-          function_calls = []
-          for tool_call in assistant_message["tool_calls"]:
-              try:
+        if assistant_message.tool_calls:
+            function_calls = []
+            for tool_call in assistant_message.tool_calls:
+                """
+                try:
+                  function_calls.append({
+                    "name": tool_call["function.name"],
+                    "arguments": tool_call["args"],
+                    "id": tool_call.id
+                  })
+                except Exception as e:
+                  print(f"Failed to process tool call: {tool_call}")
+                  print(f"Error: {e}")
+                """
                 function_calls.append({
                   "name": tool_call["name"],
-                  "arguments": tool_call["arguments"],
+                  "arguments": tool_call["args"],
+                  "id": tool_call["id"]
                 })
-              except Exception as e:
-                print(f"Failed to process tool call: {tool_call}")
-                print(f"Error: {e}")
-
-        spinner.stop()
-
-        if not function_calls:
+        else:
             break
 
         async def execute_function(func_call):
@@ -148,83 +168,16 @@ async def ai(username="anonymous", query="help", config=None, upload_dir=UPLOAD_
                 func_call["arguments"]["spinner"] = spinner
 
             result = await execute_function_by_name(func_call["name"], **func_call["arguments"])
-            return {"name": func_call["name"], "result": result}
-
-        function_results = await asyncio.gather(*[execute_function(func_call) for func_call in function_calls])
-
-        # Update messages with function calls and results
-        new_message_content = []
-        if text_content.strip():
-            new_message_content.append({
-                "type": "text",
-                "text": text_content.strip()
-            })
+            return {"id": func_call["id"], "result": result}
 
         for func_call in function_calls:
-            func_call["arguments"].pop("spinner", None)
+            result = await execute_function(func_call)
+            messages.append(ToolMessage(result["result"], tool_call_id=result["id"]))
 
-            if api_to_use == "openai":
-                messages.append({
-                    "role": "assistant",
-                    "content": None,
-                    "function_call": {
-                        "name": func_call["name"],
-                        "arguments": json.dumps(func_call["arguments"])
-                    }
-                })
-            else:  # Anthropic
-                new_message_content.append({
-                    "type": "tool_use",
-                    "id": func_call["id"],
-                    "name": func_call["name"],
-                    "input": func_call["arguments"]
-                })
+    final_response = ollama_chat_completion_request(messages=messages, config=config, tools=tools)
+    return True, final_response
 
-        if api_to_use == "anthropic" and new_message_content:
-            messages.append({
-                "role": "assistant",
-                "content": new_message_content
-            })
 
-        for func_call, result in zip(function_calls, function_results):
-            if api_to_use == "openai":
-                messages.append({
-                    "role": "function",
-                    "name": func_call["name"],
-                    "content": result["result"]
-                })
-            else:  # Anthropic
-                messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": func_call["id"],
-                            "content": result["result"]
-                        }
-                    ]
-                })
-
-        function_call_count += len(function_calls)
-
-    # Formulate final response using the tool results
-    if api_to_use == "openai":
-        final_response = await openai_chat_completion_request(messages=messages, config=config, tools=tools)
-        if not final_response:
-            return False, {"error": "Failed to get a final response from OpenAI"}
-        final_message = final_response.choices[0].message.content
-        return True, {"response": final_message}
-    else:  # Anthropic
-        final_response = await anthropic_chat_completion_request(messages=messages, config=config, tools=tools)
-        if not final_response:
-            return False, {"error": "Failed to get a final response from Anthropic"}
-        
-        final_text_content = ""
-        for content_item in final_response.content:
-            if isinstance(content_item, TextBlock):
-                final_text_content += content_item.text
-        
-        if not final_text_content:
-            return False, {"error": "No text content in Anthropic final response"}
-        
-        return True, {"response": final_text_content.strip()}
+if __name__ == "__main__":
+    ai(username="anonymous", query="ell me the contents of /Users/andylegrand/Desktop/litellm_test/test using cat file", config=None, upload_dir=UPLOAD_DIR, history=None)
+    print("Done")
