@@ -1,12 +1,18 @@
 from typing import List, Any, Dict
 import json
 import os
+from datetime import datetime
 
 from InstructorEmbedding import INSTRUCTOR
 
 class EmbeddingGenerator:
-    def __init__(self, model_name="hkunlp/instructor-xl"):
-        self.model = INSTRUCTOR(model_name)
+    _instance = None
+
+    def __new__(cls, model_name="hkunlp/instructor-xl"):
+        if cls._instance is None:
+            cls._instance = super(EmbeddingGenerator, cls).__new__(cls)
+            cls._instance.model = INSTRUCTOR(model_name)
+        return cls._instance
 
     def generate_embeddings(self, texts):
         embeddings = self.model.encode(texts).tolist()
@@ -20,9 +26,9 @@ class VectorStore:
         self.embedding_generator = EmbeddingGenerator()
         self.load()
 
-    def get(self, text_id: str) -> List[float]:
-        """Get embedding by text ID."""
-        return self.node_dict.get(text_id, {}).get('embedding', [])
+    def get(self, text_id: str) -> Dict[str, Any]:
+        """Get node by text ID."""
+        return self.node_dict.get(text_id, {})
 
     def add(self, nodes: List[Dict[str, Any]]) -> List[str]:
         """Add nodes to index and vectorize them."""
@@ -33,7 +39,10 @@ class VectorStore:
             embedding = self.vectorize(text)
             self.node_dict[text_id] = {
                 'text': text,
-                'embedding': embedding
+                'embedding': embedding,
+                'timestamp': node.get('timestamp', datetime.now().isoformat()),
+                'type': node.get('type', 'default'),
+                'metadata': node.get('metadata', {})
             }
             ids.append(text_id)
         self.save()
