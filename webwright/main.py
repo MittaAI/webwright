@@ -5,6 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import traceback
 import asyncio
+import datetime
 
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.history import FileHistory
@@ -14,6 +15,7 @@ from prompt_toolkit.clipboard import ClipboardData
 
 from lib.config import Config
 from lib.util import format_response, get_logger, custom_style
+
 
 try:
     from lib.aifunc import ai
@@ -120,6 +122,16 @@ async def process_shell_query(username, query, config, conversation_history):
         logger.error(traceback.format_exc())
         return False, {"error": error_message}
 
+def log_conversation(username, message, role):
+    webwright_dir = os.path.expanduser('~/.webwright')
+    log_dir = os.path.join(webwright_dir, 'conversation_logs')
+    os.makedirs(log_dir, exist_ok=True)
+    
+    log_file = os.path.join(log_dir, f"{username}_conversation.log")
+    
+    with open(log_file, 'a', encoding='utf-8') as f:
+        f.write(f"{role}: {message}\n")
+
 async def main(config):
     conversation_history = []
     username = config.get_username()
@@ -157,13 +169,15 @@ async def main(config):
                 return
             
             conversation_history.append({"role": "user", "content": question})
-            
+            log_conversation(username, question, "user")
+
             success, results = await process_shell_query(username, question, config, conversation_history)
             
             if success and "explanation" in results:
                 formatted_response = format_response(results['explanation'])
                 print_formatted_text(formatted_response, style=custom_style)
                 conversation_history.append({"role": "assistant", "content": results["explanation"]})
+                log_conversation(username, results["explanation"], "assistant")
             elif not success and "error" in results:
                 # Error messages are already handled in process_shell_query
                 pass

@@ -102,6 +102,7 @@ async def execute_function_by_name(function_name, **kwargs):
 
 @retry(wait=wait_random_exponential(multiplier=1, max=40), stop=stop_after_attempt(3))
 async def openai_chat_completion_request(messages=None, config=None, tools=None, tool_choice="auto"):
+    print("IN OPENAI CHAT COMPLETION REQUEST")
     client = AsyncOpenAI(api_key=config.get_openai_api_key())
 
     if tools:

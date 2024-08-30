@@ -1,71 +1,86 @@
 import json
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-from vector_store import VectorStore
+import chromadb
+import tempfile
+import shutil
 
-class OmniLogVectorStore(VectorStore):
-    def __init__(self, storage_path: str = 'omnilog_vector_store.json'):
-        super().__init__(storage_path)
+class OmniLogVectorStore:
+    def __init__(self, path: Optional[str] = None):
+        if path is None:
+            self.temp_dir = tempfile.mkdtemp()
+            path = self.temp_dir
+        else:
+            self.temp_dir = None
+        
+        self.client = chromadb.PersistentClient(path=path)
+        self.collection = self.client.get_or_create_collection("omnilog")
 
     def add_entry(self, entry: Dict[str, Any]) -> str:
-        """Add a single OmniLog entry to the vector store."""
         entry_id = entry.get('id') or str(datetime.now().timestamp())
         content = self._serialize_content(entry['content'])
         
-        node = {
-            'id': entry_id,
-            'text': content,
-            'timestamp': entry.get('timestamp') or datetime.now().isoformat(),
-            'type': entry.get('type', 'default'),
-            'metadata': entry
-        }
+        self.collection.add(
+            documents=[content],
+            metadatas=[{
+                'timestamp': entry['timestamp'],
+                'type': entry['type'],
+                'full_entry': json.dumps(entry)
+            }],
+            ids=[entry_id]
+        )
         
-        self.add([node])
         return entry_id
 
+    def get(self, entry_id: str) -> Optional[Dict[str, Any]]:
+        result = self.collection.get(ids=[entry_id])
+        if result['metadatas']:
+            return json.loads(result['metadatas'][0]['full_entry'])
+        return None
+
     def get_recent_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get the most recent entries from the vector store."""
-        sorted_entries = sorted(
-            self.node_dict.values(),
-            key=lambda x: x['timestamp'],
-            reverse=True
-        )
-        return [entry['metadata'] for entry in sorted_entries[:limit]]
+        results = self.collection.get()
+        entries = [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
+        sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
+        return sorted_entries[:limit]
 
     def search_entries(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Search entries using vector similarity."""
-        query_embedding = self.vectorize(query)
-        similar_ids = self.query(query_embedding, top_k)
-        return [self.node_dict[id]['metadata'] for id in similar_ids]
+        results = self.collection.query(
+            query_texts=[query],
+            n_results=top_k
+        )
+        return [json.loads(metadata['full_entry']) for metadata in results['metadatas'][0]]
 
     def search_by_date_range(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
-        """Search entries within a specific date range."""
-        return [
-            entry['metadata'] for entry in self.node_dict.values()
-            if start_date <= datetime.fromisoformat(entry['timestamp']) <= end_date
+        results = self.collection.get()
+        entries = [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
+        filtered_entries = [
+            entry for entry in entries
+            if start_date.isoformat() <= entry['timestamp'] <= end_date.isoformat()
         ]
+        return filtered_entries
 
     def search_by_type(self, entry_type: str) -> List[Dict[str, Any]]:
-        """Search entries by type."""
-        return [
-            entry['metadata'] for entry in self.node_dict.values()
-            if entry['type'] == entry_type
-        ]
-
-    def _serialize_content(self, content: Any) -> str:
-        """Serialize the content for vectorization."""
-        if isinstance(content, dict):
-            return json.dumps(content)
-        return str(content)
+        results = self.collection.get(
+            where={"type": entry_type}
+        )
+        return [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
 
     def build_omnilog(self, recent_count: int = 10, query: Optional[str] = None, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Build OmniLog instance with recent entries and optionally similar entries."""
         recent_entries = self.get_recent_entries(recent_count)
         
         if query:
             similar_entries = self.search_entries(query, top_k)
-            # Combine recent and similar entries, removing duplicates
             combined_entries = recent_entries + [entry for entry in similar_entries if entry not in recent_entries]
             return combined_entries[:max(recent_count, top_k)]
         
         return recent_entries
+
+    def _serialize_content(self, content: Any) -> str:
+        if isinstance(content, dict):
+            return json.dumps(content)
+        return str(content)
+
+    def __del__(self):
+        if self.temp_dir:
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
