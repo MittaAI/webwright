@@ -83,5 +83,24 @@ async def test_omnilog_integration():
         content_preview = entry['content'][:50] if isinstance(entry['content'], str) else str(entry['content'])[:50]
         print(f"Type: {entry['type']}, Timestamp: {entry['timestamp']}, Content: {content_preview}...")
 
+
+async def test_omnilog_queries():
+    store = OmniLogVectorStore()
+
+    # Add some sample entries
+    entries = [
+        {"content": "My parrot is blue", "timestamp": "2023-08-15T09:00:00", "type": "user_query"},
+        {"content": "That great", "timestamp": "2023-08-15T09:00:10", "type": "llm_reponse"},
+        {"content": "What color is my parrot?", "timestamp": "2023-08-15T09:00:11", "type": "assistant"},
+    ]
+
+    for entry in entries:
+        store.add_entry(entry)
+        print(store.get_recent_entries(10))
+        print("\n\n")
+
+
+
 if __name__ == "__main__":
-    asyncio.run(test_omnilog_integration())
+    asyncio.run(test_omnilog_queries())
+    # asyncio.run(test_omnilog_integration())

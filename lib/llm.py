@@ -102,6 +102,8 @@ class llm_wrapper:
                         "name": message["content"]["tool"],
                         "content": message["content"]["response"]
                     })
+                else:
+                    raise ValueError(f"Invalid message type: {message['type']}")
 
             # Add system prompt
             oai_messages.append({"role": "system", "content": SYSTEM_PROMPT})

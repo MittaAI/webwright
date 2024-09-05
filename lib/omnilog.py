@@ -42,7 +42,7 @@ class OmniLogVectorStore:
             return json.loads(result['metadatas'][0]['full_entry'])
         return None
 
-    def get_recent_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_recent_entries_alternate(self, limit: int = 10) -> List[Dict[str, Any]]:
         results = self.collection.get()
         entries = [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
         sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
@@ -67,6 +67,16 @@ class OmniLogVectorStore:
                         break
         
         return list(reversed(recent_entries))  # Reverse to get chronological order
+
+    def get_recent_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
+      results = self.collection.get()
+      entries = [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
+      
+      # Sort the entries by timestamp in descending order
+      sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
+      
+      # Return the first 'limit' entries
+      return sorted_entries[:limit]
 
     def search_entries(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         results = self.collection.query(

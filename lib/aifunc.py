@@ -63,54 +63,57 @@ async def execute_function_by_name(function_name, **kwargs):
         return json.dumps({"error": str(e)})
 
 async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: OmniLogVectorStore = None):
-    messages = olog.get_recent_entries(10)
-    spinner = Halo(text='Calling the model...', spinner='dots')
-    spinner.start()
+    max_function_calls = 6
+    function_call_count = 0
     
-    try:
-        llm_response = await llm.call_llm_api(messages=messages, config=config, tools=tools, tool_choice="auto")
-    except Exception as e:
-        raise Exception(f"Failed to get a response from LLM: {str(e)}")
-    
-    if not llm_response:
-        raise Exception("Empty response from LLM")
-    
-    spinner.stop()
-    
-    if not llm_response.get("function_calls"):
-        return True, {"response": llm_response["content"]}
-
-    for func_call in llm_response["function_calls"]:
-        try:
-            func_data = {
-                "name": func_call["name"],
-                "arguments": func_call["parameters"],
-            }
-            
-            print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_data['name']}")]), style=custom_style)
-            
-            if func_data["name"] == "set_api_config_dialog":
-                func_data["arguments"]["spinner"] = spinner
-            
-            result = await execute_function_by_name(func_data["name"], **func_data["arguments"])
-            
-            # add llm response
-
-            olog.add_entry({
-                'content': {
-                    "tool": func_data["name"],
-                    "parameters": json.dumps(func_data["arguments"]),
-                    "response": result
-                },
-                'type': 'function_calls',
-                'timestamp': datetime.now().isoformat()
-            })
+    while function_call_count < max_function_calls:
+        messages = olog.get_recent_entries(10)
+        spinner = Halo(text='Calling the model...', spinner='dots')
+        spinner.start()
         
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")
+        try:
+            llm_response = await llm.call_llm_api(messages=messages, config=config, tools=tools, tool_choice="auto")
         except Exception as e:
-            print(traceback.format_exc())
-            print(f"Error executing function")
+            raise Exception(f"Failed to get a response from LLM: {str(e)}")
+        
+        if not llm_response:
+            raise Exception("Empty response from LLM")
+        
+        spinner.stop()
+        
+        if not llm_response.get("function_calls"):
+            return True, {"response": llm_response["content"]}
+
+        for func_call in llm_response["function_calls"]:
+            try:
+                func_data = {
+                    "name": func_call["name"],
+                    "arguments": func_call["parameters"],
+                }
+                
+                print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_data['name']}")]), style=custom_style)
+                
+                if func_data["name"] == "set_api_config_dialog":
+                    func_data["arguments"]["spinner"] = spinner
+                
+                result = await execute_function_by_name(func_data["name"], **func_data["arguments"])
+                # add llm response
+                olog.add_entry({
+                    'content': {
+                        "tool": func_data["name"],
+                        "parameters": json.dumps(func_data["arguments"]),
+                        "response": result
+                    },
+                    'type': 'tool_call',
+                    'timestamp': datetime.now().isoformat()
+                })
+                function_call_count += 1
+
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")
+            except Exception as e:
+                print(traceback.format_exc())
+                print(f"Error executing function")
 
     messages = olog.get_recent_entries(10)
     llm_response = await llm.call_llm_api(messages=messages, config=config, tools=tools, tool_choice="auto")

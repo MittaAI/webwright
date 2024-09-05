@@ -17,3 +17,4 @@ cowsay
 google-generativeai
 unidiff
 patch
+chromadb
