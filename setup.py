@@ -3,6 +3,7 @@ from setuptools.command.install import install
 import subprocess
 import os
 import shutil
+from pathlib import Path
 
 class CustomInstallCommand(install):
     def run(self):
@@ -18,9 +19,6 @@ class CustomInstallCommand(install):
         # Path to the installation directory
         install_dir = os.path.join(self.install_lib, 'webwright')
 
-        # Copy the contents of the templates directory to the installation directory
-        shutil.copytree(templates_dir, os.path.join(install_dir, 'templates'), dirs_exist_ok=True)
-
         # Download the INSTRUCTOR model
         subprocess.run(["python", "-m", "InstructorEmbedding", "hkunlp/instructor-xl"])
 
@@ -28,13 +26,19 @@ class CustomInstallCommand(install):
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
+# Read the README file with UTF-8 encoding
+this_directory = Path(__file__).parent
+try:
+    with open(this_directory / "README.md", encoding="utf-8") as f:
+        long_description = f.read()
+except Exception as e:
+    print(f"An error occurred while reading README.md: {e}")
+    long_description = ""
+
 setup(
     name='webwright',
-    version='0.1.0',
+    version='0.0.4',
     packages=find_packages(),
-    package_data={
-        'webwright': ['templates/*'],
-    },
     install_requires=requirements,
     entry_points={
         'console_scripts': [
@@ -44,4 +48,6 @@ setup(
     cmdclass={
         'install': CustomInstallCommand,
     },
+    long_description=long_description,
+    long_description_content_type="text/markdown",
 )
