@@ -1,7 +1,3 @@
-<div align="center">
-  <img src="https://github.com/MittaAI/webwright/blob/main/assets/logo.png" width="200" alt="Webwright Logo">
-</div>
-
 # Webwright: The Ghost in Your Shell 👻💻
 
 Webwright is more than just a terminal shell—it's a transformative tool that gets things done, plain and simple.
@@ -39,7 +35,7 @@ Please ensure you have at least one of these API keys before proceeding with the
 ## 🛠️ Installation
 Webwright requires Anaconda and Docker to be configured on your system.
 
-1. **Install Webwright** (coming soon)
+1. **Install Webwright**
    ```bash
    pip install webwright
    ```
