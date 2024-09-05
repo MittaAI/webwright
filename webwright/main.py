@@ -24,7 +24,7 @@ except ImportError as e:
     if 'git' in str(e):
         print_formatted_text(FormattedText([
             ('class:error', "\nsystem> Git executable not found.\n"),
-            ('class:instruction', "\nPlease install Git using the following steps:\n"),
+            ('class:instruction', "\nPlease install Git and webwright using the following steps:\n"),
             ('class:instruction', "\n1. Install Conda from "),
             ('class:inline-code', "https://docs.conda.io/en/latest/miniconda.html"),
             ('class:instruction', "\n\n2. Create and activate a Conda environment:\n"),
@@ -32,7 +32,9 @@ except ImportError as e:
             ('class:code', "   conda activate webwright\n"),
             ('class:instruction', "\n3. Install Git in the Conda environment:\n"),
             ('class:code', "   conda install git\n"),
-            ('class:instruction', "\n4. Restart webwright:\n"),
+            ('class:instruction', "\n4. Install webwright using pip:\n"),
+            ('class:code', "   pip install webwright\n"),
+            ('class:instruction', "\n5. Run webwright:\n"),
             ('class:code', "   webwright\n"),
         ]), style=custom_style)
         sys.exit(1)
