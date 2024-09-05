@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import traceback
 import asyncio
-import datetime
+from datetime import datetime
 
 from prompt_toolkit import PromptSession, print_formatted_text
 from prompt_toolkit.history import FileHistory
@@ -15,7 +15,7 @@ from prompt_toolkit.clipboard import ClipboardData
 
 from lib.config import Config
 from lib.util import format_response, get_logger, custom_style
-
+from lib.omnilog import OmniLogVectorStore
 
 try:
     from lib.aifunc import ai
@@ -48,6 +48,9 @@ logger = get_logger()
 
 # Initialize Config
 config = Config()
+
+# Initialize OmniLogVectorStore
+chat_log = OmniLogVectorStore(os.path.join(webwright_dir, 'chat_log_vector_store.json'))
 
 # User
 username = config.get_username()
@@ -83,57 +86,26 @@ def custom_exception_handler(loop, context):
     else:
         loop.default_exception_handler(context)
 
-async def process_shell_query(username, query, config, conversation_history):
+async def process_shell_query(username, query, config, chat_log):
     try:
-        success, results = await ai(username=username, query=query, config=config, history=conversation_history)
-        
-        logger.debug(f"AI response: {results}")
+        # Add user query to the chat log
+        chat_log.add_entry({
+            'content': query,
+            'type': 'user_query',
+            'timestamp': datetime.now().isoformat()
+        })
+        success = await ai(username=username, config=config, olog=chat_log)
+        return success
 
-        if success:
-            if "response" in results and results["response"] is not None:
-                return True, {"explanation": results["response"]}
-            elif "function_call" in results:
-                try:
-                    function_call = results["function_call"]
-                    arguments = json.loads(function_call.arguments)
-                    function_response = f"Function call: {function_call.name}\nArguments: {json.dumps(arguments, indent=2)}"
-                    return True, {"explanation": function_response}
-                except json.JSONDecodeError:
-                    function_response = f"Function call: {function_call.name}\nArguments (raw): {function_call.arguments}"
-                    return True, {"explanation": function_response}
-            else:
-                error_msg = "An unexpected response format was received."
-                print(results)
-                print_formatted_text(FormattedText([('class:error', f"system> Error: {error_msg}")]), style=custom_style)
-                return False, {"error": error_msg}
-        else:
-            if "error" in results:
-                error_message = results["error"]
-                print_formatted_text(FormattedText([('class:error', f"system> Error: {error_message}")]), style=custom_style)
-                logger.error(f"Error: {error_message}")
-            else:
-                error_message = "An unknown error occurred."
-                print_formatted_text(FormattedText([('class:error', f"system> Error: {error_message}")]), style=custom_style)
-            return False, {"error": error_message}
     except Exception as e:
         error_message = f"Error: {str(e)}"
         print_formatted_text(FormattedText([('class:error', f"system> {error_message}")]), style=custom_style)
         logger.error(error_message)
         logger.error(traceback.format_exc())
+        print_formatted_text(traceback.format_exc())
         return False, {"error": error_message}
 
-def log_conversation(username, message, role):
-    webwright_dir = os.path.expanduser('~/.webwright')
-    log_dir = os.path.join(webwright_dir, 'conversation_logs')
-    os.makedirs(log_dir, exist_ok=True)
-    
-    log_file = os.path.join(log_dir, f"{username}_conversation.log")
-    
-    with open(log_file, 'a', encoding='utf-8') as f:
-        f.write(f"{role}: {message}\n")
-
 async def main(config):
-    conversation_history = []
     username = config.get_username()
 
     while True:
@@ -168,21 +140,7 @@ async def main(config):
                 print("system> Bye!")
                 return
             
-            conversation_history.append({"role": "user", "content": question})
-            log_conversation(username, question, "user")
-
-            success, results = await process_shell_query(username, question, config, conversation_history)
-            
-            if success and "explanation" in results:
-                formatted_response = format_response(results['explanation'])
-                print_formatted_text(formatted_response, style=custom_style)
-                conversation_history.append({"role": "assistant", "content": results["explanation"]})
-                log_conversation(username, results["explanation"], "assistant")
-            elif not success and "error" in results:
-                # Error messages are already handled in process_shell_query
-                pass
-            else:
-                print_formatted_text(FormattedText([('class:error', "system> An unexpected error occurred.")]), style=custom_style)
+            success = await process_shell_query(username, question, config, chat_log)
 
         except Exception as e:
             print_formatted_text(FormattedText([('class:error', f"system> Error: {str(e)}")]), style=custom_style)
