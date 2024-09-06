@@ -4,7 +4,7 @@ import math
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
-def calculate(expression: str) -> dict:
+def calculate(expression: str, olog=None) -> dict:
     """
     Calculates the result of a given mathematical expression. 
     Supports functions like sqrt() and variables like pi, e, etc. from the math module.
@@ -14,6 +14,7 @@ def calculate(expression: str) -> dict:
     :return: A dictionary containing the result of the calculation.
     :rtype: dict
     """
+    
     # Define a safe dictionary of allowed names
     allowed_names = {
         'sqrt': math.sqrt,

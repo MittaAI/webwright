@@ -148,6 +148,7 @@ async def main(config):
             print_formatted_text(FormattedText([('class:error', f"system> Error: {str(e)}")]), style=custom_style)
             logger.error(f"Error: {str(e)}")
             logger.error(traceback.format_exc())
+            return
 
 def entry_point():
     config = Config()

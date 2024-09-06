@@ -22,6 +22,7 @@ from lib.llm import llm_wrapper
 from lib.omnilog import OmniLogVectorStore
 
 import traceback
+import inspect
 
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
@@ -36,7 +37,7 @@ UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
 llm = llm_wrapper()
 
-async def execute_function_by_name(function_name, **kwargs):
+async def execute_function_by_name(function_name, olog, **kwargs):
     logger.info(f"Calling {function_name} with arguments {kwargs}")
     
     if function_name not in callable_registry:
@@ -48,6 +49,11 @@ async def execute_function_by_name(function_name, **kwargs):
         func_logger.info(f"Function {function_name} called with arguments: {kwargs}")
         function_to_call = callable_registry[function_name]
         
+        # Check if the function accepts 'olog' as a parameter
+        function_params = inspect.signature(function_to_call).parameters
+        if 'olog' in function_params:
+            kwargs['olog'] = olog
+
         if asyncio.iscoroutinefunction(function_to_call):
             # If it's a coroutine function, await it
             result = await function_to_call(**kwargs)
@@ -100,8 +106,10 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
                 
                 if func_data["name"] == "set_api_config_dialog":
                     func_data["arguments"]["spinner"] = spinner
+
                 
-                result = await execute_function_by_name(func_data["name"], **func_data["arguments"])
+                result = await execute_function_by_name(func_call["name"], olog, **func_data["arguments"])
+
                 # add llm response
                 olog.add_entry({
                     'content': {
