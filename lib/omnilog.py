@@ -76,7 +76,7 @@ class OmniLogVectorStore:
       sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
       
       # Return the first 'limit' entries
-      return sorted_entries[:limit]
+      return reversed(sorted_entries[:limit])
 
     def search_entries(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         results = self.collection.query(

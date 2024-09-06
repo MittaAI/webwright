@@ -74,7 +74,7 @@ session = PromptSession(history=history, key_bindings=bindings)
 
 def custom_exception_handler(loop, context):
     exception = context.get("exception")
-    
+
     if exception:
         logger.error(f"Caught exception: {exception}")
     else:
