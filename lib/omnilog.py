@@ -66,7 +66,7 @@ class OmniLogVectorStore:
                     if len(recent_entries) >= limit:
                         break
         
-        return list(reversed(recent_entries))  # Reverse to get chronological order
+        return list(recent_entries)  # Reverse to get chronological order
 
     def get_recent_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
       results = self.collection.get()

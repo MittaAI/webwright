@@ -82,7 +82,12 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
         spinner.stop()
         
         if not llm_response.get("function_calls"):
-            return True, {"response": llm_response["content"]}
+            olog.add_entry({
+                'content': llm_response["content"],
+                'type': 'llm_response',
+                'timestamp': datetime.now().isoformat()
+            })
+            return True
 
         for func_call in llm_response["function_calls"]:
             try:
@@ -115,12 +120,5 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
                 print(traceback.format_exc())
                 print(f"Error executing function")
 
-    messages = olog.get_recent_entries(10)
-    llm_response = await llm.call_llm_api(messages=messages, config=config, tools=tools, tool_choice="auto")
-    olog.add_entry({
-        'content': llm_response["content"],
-        'type': 'llm_response',
-        'timestamp': datetime.now().isoformat()
-    })
-
+    # function calls maxed out, do something
     return True
