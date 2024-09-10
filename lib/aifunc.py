@@ -16,6 +16,7 @@ from lib.function_wrapper import function_info_decorator, tools, callable_regist
 from git import Repo
 
 from lib.util import custom_style
+from lib.util import format_response
 from prompt_toolkit.formatted_text import FormattedText
 
 from lib.llm import llm_wrapper

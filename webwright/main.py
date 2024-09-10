@@ -41,6 +41,9 @@ except ImportError as e:
     else:
         raise
 
+# set this to avoid warnings
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
 os.makedirs(webwright_dir, exist_ok=True)

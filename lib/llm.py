@@ -13,6 +13,10 @@ from git import Repo
 import json
 from datetime import datetime
 
+from lib.util import custom_style
+from lib.util import format_response
+from prompt_toolkit.formatted_text import FormattedText
+
 # Configure logging
 logger = get_logger()
 
@@ -139,7 +143,9 @@ class llm_wrapper:
                       print(f"Error: {e}")
 
             # Print the response
-            print(content)
+            if content:
+              formatted_response = format_response(content)
+              print_formatted_text(formatted_response, style=custom_style)
 
             # Return in the standardized format
             return {
