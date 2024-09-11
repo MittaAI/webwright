@@ -1,4 +1,9 @@
+# Openai imports
 from openai import AsyncOpenAI
+
+# Anthropic imports
+from anthropic import AsyncAnthropic
+from anthropic.types import TextBlock, ToolUseBlock
 
 # Utility imports (assuming these are from your local modules)
 from lib.util import create_and_check_directory
@@ -75,82 +80,188 @@ class llm_wrapper:
     """
 
 
-    def __init__(self):
-        self.llm = "openai"
+    def __init__(self, llm="anthropic"):
+        self.llm = llm
 
-    async def call_llm_api(self, messages=None, config=None, tools=tools, tool_choice="auto"):
+    async def call_llm_api(self, messages=None, config=None, tools=tools, tool_choice="auto", llm=None):
+        if llm:
+            self.llm = llm
+        else:
+            self.llm = config.get_config_value("config", "PREFERRED_API")
         if self.llm == "openai":
             return await self.call_openai_api(messages, config, tools, tool_choice)
+        elif self.llm == "anthropic":
+            return await self.call_anthropic_api(messages, config, tools, tool_choice)
     
-    async def call_openai_api(self, messages=None, config=None, tools=tools, tool_choice="auto"):
-            # Convert messages to OpenAI's format
-            oai_messages = []
-            for message in messages:
-                if message["type"] == "user_query":
-                    oai_messages.append({"role": "user", "content": message["content"]})
-                elif message["type"] == "llm_response":
-                    oai_messages.append({"role": "assistant", "content": message["content"]})
-                elif message["type"] == "tool_call":
-                    # {'role': 'assistant', 'content': None, 'function_call': {'name': 'cat_file', 'arguments': '{"file_path": "/Users/andylegrand/Desktop/untitled folder/diff.txt"}'}},
-                    # {'role': 'function', 'name': 'cat_file', 'content': '{"success": true, "contents": "<returned values>")"}'}]
-                    oai_messages.append({
-                        "role": "assistant",
-                        "content": None,
-                        "function_call": {
-                            "name": message["content"]["tool"],
-                            "arguments": json.dumps(message["content"]["parameters"])
-                        }
-                    })
-                    oai_messages.append({
-                        "role": "function",
-                        "name": message["content"]["tool"],
-                        "content": message["content"]["response"]
+    async def call_anthropic_api(self, messages=None, config=None, tools=tools, tool_choice="auto"):
+        # Convert tools to anthropic format
+        if tools:
+            anthropic_tools = []
+            for tool in tools:
+                if 'function' in tool:
+                    anthropic_tools.append({
+                        "name": tool['function']['name'],
+                        "description": tool['function']['description'],
+                        "input_schema": tool['function']['parameters'],
                     })
                 else:
-                    raise ValueError(f"Invalid message type: {message['type']}")
+                    anthropic_tools.append(tool)
+        else:
+            anthropic_tools = None
 
-            #print(oai_messages)
+        # Convert messages to anthropic format
+        # Ensure start with user, alternating user/assistant messages
+        a_messages = []
+        id = 0
+        prev_message_type = "llm_response" # Ensure first message is user
+        filler_message = "filler"
 
-            # Add system prompt
-            oai_messages.append({"role": "system", "content": SYSTEM_PROMPT})
+        for message in messages:
+            if message["type"] == "user_query":
+                if prev_message_type == "user_query" or prev_message_type == "tool_call":
+                    a_messages.append({"role": "assistant", "content": filler_message})
+                a_messages.append({"role": "user", "content": message["content"]})
+            elif message["type"] == "llm_response":
+                if prev_message_type == "llm_response":
+                    a_messages.append({"role": "user", "content": filler_message})
+                a_messages.append({"role": "assistant", "content": message["content"]})
+            elif message["type"] == "tool_call":
+                if prev_message_type == "llm_response":
+                    a_messages.append({"role": "assistant", "content": filler_message})
+                a_messages.append({
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": str(id),
+                            "name": message["content"]["tool"],
+                            "input": json.loads(message["content"]["parameters"])
+                        }
+                    ]
+                })
+                a_messages.append({
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": str(id),
+                            "content": message["content"]["response"]
+                        }
+                    ]
+                })
+                id += 1
+            else:
+                raise ValueError(f"Invalid message type: {message['type']}")
 
-            # Call OpenAI API
-            client = AsyncOpenAI(api_key=config.get_openai_api_key())
-            response = await client.chat.completions.create(
-                model=config.get_config_value("config", "OPENAI_MODEL"),
-                messages=oai_messages,
-                tools=tools,
-                tool_choice=tool_choice
-            )
+            prev_message_type = message["type"]
 
-            # Extract content, timestamp, and function calls from the response
-            assistant_message = response.choices[0].message
-            content = assistant_message.content
-            timestamp = datetime.now().isoformat()
+        # Call anthropic API
+        client = AsyncAnthropic(api_key=config.get_anthropic_api_key())
+        response = await client.messages.create(
+            model=config.get_config_value("config", "ANTHROPIC_MODEL"),
+            max_tokens=2048,
+            messages=a_messages,
+            tools=anthropic_tools,
+            system=SYSTEM_PROMPT
+        )
+
+        # Extract content, timestamp, and function calls from the response
+        text_content = ""
+        function_calls = []
+        timestamp = datetime.now().isoformat()
+
+        for content_item in response.content:
+            if isinstance(content_item, TextBlock):
+                text_content += content_item.text
+            elif isinstance(content_item, ToolUseBlock):
+                function_calls.append({
+                    "name": content_item.name,
+                    "parameters": content_item.input,
+                    #"id": content_item.id
+                })
+
+        # Print the response
+        if text_content:
+          formatted_response = format_response(text_content)
+          print_formatted_text(formatted_response, style=custom_style)
+
+        # Return in the standardized format
+        return {
+            "content": text_content,
+            "timestamp": timestamp,
+            "function_calls": function_calls
+        }
+
+
+    async def call_openai_api(self, messages=None, config=None, tools=tools, tool_choice="auto"):
+        # Convert messages to OpenAI's format
+        oai_messages = []
+        for message in messages:
+            if message["type"] == "user_query":
+                oai_messages.append({"role": "user", "content": message["content"]})
+            elif message["type"] == "llm_response":
+                oai_messages.append({"role": "assistant", "content": message["content"]})
+            elif message["type"] == "tool_call":
+                # {'role': 'assistant', 'content': None, 'function_call': {'name': 'cat_file', 'arguments': '{"file_path": "/Users/andylegrand/Desktop/untitled folder/diff.txt"}'}},
+                # {'role': 'function', 'name': 'cat_file', 'content': '{"success": true, "contents": "<returned values>")"}'}]
+                oai_messages.append({
+                    "role": "assistant",
+                    "content": None,
+                    "function_call": {
+                        "name": message["content"]["tool"],
+                        "arguments": json.dumps(message["content"]["parameters"])
+                    }
+                })
+                oai_messages.append({
+                    "role": "function",
+                    "name": message["content"]["tool"],
+                    "content": message["content"]["response"]
+                })
+            else:
+                raise ValueError(f"Invalid message type: {message['type']}")
+
+        #print(oai_messages)
+
+        # Add system prompt
+        oai_messages.append({"role": "system", "content": SYSTEM_PROMPT})
+
+        # Call OpenAI API
+        client = AsyncOpenAI(api_key=config.get_openai_api_key())
+        response = await client.chat.completions.create(
+            model=config.get_config_value("config", "OPENAI_MODEL"),
+            messages=oai_messages,
+            tools=tools,
+            tool_choice=tool_choice
+        )
+
+        # Extract content, timestamp, and function calls from the response
+        assistant_message = response.choices[0].message
+        content = assistant_message.content
+        timestamp = datetime.now().isoformat()
+        function_calls = []
+
+        # Processing potential function/tool calls in the response
+        if assistant_message.tool_calls:
             function_calls = []
+            for tool_call in assistant_message.tool_calls:
+                try:
+                  function_calls.append({
+                    "name": tool_call.function.name,
+                    "parameters": json.loads(tool_call.function.arguments),
+                  })
+                except Exception as e:
+                  print(f"Failed to process tool call: {tool_call}")
+                  print(f"Error: {e}")
 
-            # Processing potential function/tool calls in the response
-            if assistant_message.tool_calls:
-                function_calls = []
-                for tool_call in assistant_message.tool_calls:
-                    try:
-                      function_calls.append({
-                        "name": tool_call.function.name,
-                        "parameters": json.loads(tool_call.function.arguments),
-                      })
-                    except Exception as e:
-                      print(f"Failed to process tool call: {tool_call}")
-                      print(f"Error: {e}")
+        # Print the response
+        if content:
+          formatted_response = format_response(content)
+          print_formatted_text(formatted_response, style=custom_style)
 
-            # Print the response
-            if content:
-              formatted_response = format_response(content)
-              print_formatted_text(formatted_response, style=custom_style)
-
-            # Return in the standardized format
-            return {
-                "content": content,
-                "timestamp": timestamp,
-                "function_calls": function_calls
-            }
+        # Return in the standardized format
+        return {
+            "content": content,
+            "timestamp": timestamp,
+            "function_calls": function_calls
+        }
 

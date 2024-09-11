@@ -80,6 +80,7 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
         
         try:
             llm_response = await llm.call_llm_api(messages=messages, config=config, tools=tools, tool_choice="auto")
+            print(llm_response)
         except Exception as e:
             raise Exception(f"Failed to get a response from LLM: {str(e)}")
         
@@ -98,24 +99,19 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
 
         for func_call in llm_response["function_calls"]:
             try:
-                func_data = {
-                    "name": func_call["name"],
-                    "arguments": func_call["parameters"],
-                }
+                print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]), style=custom_style)
                 
-                print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_data['name']}")]), style=custom_style)
+                if func_call["name"] == "set_api_config_dialog":
+                    func_call["parameters"]["spinner"] = spinner
                 
-                if func_data["name"] == "set_api_config_dialog":
-                    func_data["arguments"]["spinner"] = spinner
-
+                result = await execute_function_by_name(func_call["name"], olog, **func_call["parameters"])
                 
-                result = await execute_function_by_name(func_call["name"], olog, **func_data["arguments"])
-
                 # add llm response
+                # TODO dont json dump the result, for openai handle in llm class
                 olog.add_entry({
                     'content': {
-                        "tool": func_data["name"],
-                        "parameters": json.dumps(func_data["arguments"]),
+                        "tool": func_call["name"],
+                        "parameters": json.dumps(func_call["parameters"]),
                         "response": result
                     },
                     'type': 'tool_call',
