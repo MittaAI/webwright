@@ -17,4 +17,5 @@ cowsay
 google-generativeai
 unidiff
 patch
-chromadb
+chromadb==0.5.4
+chroma-hnswlib==0.7.3
