@@ -36,9 +36,7 @@ logger = get_logger()
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
-llm = llm_wrapper()
-
-async def execute_function_by_name(function_name, olog_history, **kwargs):
+async def execute_function_by_name(function_name, f_config, olog_history, **kwargs):
     logger.info(f"Calling {function_name} with arguments {kwargs}")
     
     if function_name not in callable_registry:
@@ -54,6 +52,9 @@ async def execute_function_by_name(function_name, olog_history, **kwargs):
         function_params = inspect.signature(function_to_call).parameters
         if 'olog' in function_params:
             kwargs['olog'] = olog_history
+
+        if 'config' in function_params:
+            kwargs['config'] = f_config
 
         if asyncio.iscoroutinefunction(function_to_call):
             # If it's a coroutine function, await it
@@ -73,13 +74,17 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
     max_function_calls = 6
     function_call_count = 0
     
+    # get the LLM wrapper
+    llm = llm_wrapper(config=config)
+
+    # loop over max_function_calls
     while function_call_count < max_function_calls:
         messages = olog.get_recent_entries(10)
-        spinner = Halo(text='Calling the model...', spinner='dots')
+        spinner = Halo(text='Thinking...')
         spinner.start()
         
         try:
-            llm_response = await llm.call_llm_api(messages=messages, config=config, tools=tools, tool_choice="auto")
+            llm_response = await llm.call_llm_api(messages=messages, tools=tools, tool_choice="auto")
         except Exception as e:
             raise Exception(f"Failed to get a response from LLM: {str(e)}")
         
@@ -87,6 +92,7 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
             raise Exception("Empty response from LLM")
         
         spinner.stop()
+        spinner.clear()
         
         if not llm_response.get("function_calls"):
             olog.add_entry({
@@ -103,7 +109,7 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
                 if func_call["name"] == "set_api_config_dialog":
                     func_call["parameters"]["spinner"] = spinner
                 
-                result = await execute_function_by_name(func_call["name"], olog, **func_call["parameters"])
+                result = await execute_function_by_name(func_call["name"], config, olog, **func_call["parameters"])
                 
                 # add llm response
                 olog.add_entry({

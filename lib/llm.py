@@ -63,6 +63,16 @@ Assistant: Thank you for the confirmation. I'll proceed with the plan.
 Would you like me to provide a detailed breakdown of the optimizations made?
 """
 
+def safe_convert_to_dict(content):
+    if isinstance(content, dict):
+        return {k: safe_convert_to_dict(v) for k, v in content.items()}
+    elif isinstance(content, list):
+        return [safe_convert_to_dict(item) for item in content]
+    elif isinstance(content, (str, int, float, bool, type(None))):
+        return content
+    else:
+        return str(content)
+    
 class llm_wrapper:
     """
     Takes in a list of messages in the omnilog format:
@@ -80,99 +90,94 @@ class llm_wrapper:
     """
 
 
-    def __init__(self, llm="anthropic"):
+    def __init__(self, llm="anthropic", config=None):
         self.llm = llm
+        self.config = config
 
-    async def call_llm_api(self, messages=None, config=None, tools=tools, tool_choice="auto", llm=None):
+    async def call_llm_api(self, messages=None, tools=tools, tool_choice="auto", llm=None):
         if llm:
             self.llm = llm
         else:
-            self.llm = config.get_config_value("config", "PREFERRED_API")
+            self.llm = self.config.get_config_value("config", "PREFERRED_API")
         if self.llm == "openai":
-            return await self.call_openai_api(messages, config, tools, tool_choice)
+            return await self.call_openai_api(messages, tools, tool_choice)
         elif self.llm == "anthropic":
-            return await self.call_anthropic_api(messages, config, tools, tool_choice)
+            return await self.call_anthropic_api(messages, tools, tool_choice)
     
-    async def call_anthropic_api(self, messages=None, config=None, tools=tools, tool_choice="auto"):
+    async def call_anthropic_api(self, messages=None, tools=tools, tool_choice="auto"):
+        logger.info("Starting call_anthropic_api method")
+        
         # Convert tools to anthropic format
-        if tools:
-            anthropic_tools = []
-            for tool in tools:
-                if 'function' in tool:
-                    anthropic_tools.append({
-                        "name": tool['function']['name'],
-                        "description": tool['function']['description'],
-                        "input_schema": tool['function']['parameters'],
-                    })
-                else:
-                    anthropic_tools.append(tool)
-        else:
-            anthropic_tools = None
+        anthropic_tools = [
+            {
+                "name": tool['function']['name'],
+                "description": tool['function']['description'],
+                "input_schema": tool['function']['parameters'],
+            } for tool in tools if 'function' in tool
+        ] if tools else None
 
         # Convert messages to anthropic format
-        # Ensure start with user, alternating user/assistant messages
         a_messages = []
         id = 0
-        prev_message_type = "llm_response" # Ensure first message is user
-        filler_message = "filler"
 
-        for message in messages:
+        for idx, message in enumerate(messages):
+            logger.info(f"Processing message {idx}: {json.dumps(message, indent=2)}")
             if message["type"] == "user_query":
-                if prev_message_type == "user_query" or prev_message_type == "tool_call":
-                    a_messages.append({"role": "assistant", "content": filler_message})
                 a_messages.append({"role": "user", "content": message["content"]})
             elif message["type"] == "llm_response":
-                if prev_message_type == "llm_response":
-                    a_messages.append({"role": "user", "content": filler_message})
                 a_messages.append({"role": "assistant", "content": message["content"]})
             elif message["type"] == "tool_call":
-                if prev_message_type == "llm_response":
-                    a_messages.append({"role": "assistant", "content": filler_message})
-                a_messages.append({
-                    "role": "assistant",
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "id": str(id),
-                            "name": message["content"]["tool"],
-                            "input": json.loads(message["content"]["parameters"])
-                        }
-                    ]
-                })
-                a_messages.append({
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": str(id),
-                            "content": message["content"]["response"]
-                        }
-                    ]
-                })
+                tool_use_content = {
+                    "type": "tool_use",
+                    "id": str(id),
+                    "name": message["content"]["tool"],
+                    "input": json.loads(message["content"]["parameters"])
+                }
+                a_messages.append({"role": "assistant", "content": [tool_use_content]})
+                
+                # Safely convert tool result content
+                tool_result_content = safe_convert_to_dict(message["content"]["response"])
+                logger.info(f"Converted tool result content: {json.dumps(tool_result_content, indent=2)}")
+                
+                tool_result = {
+                    "type": "tool_result",
+                    "tool_use_id": str(id),
+                    "content": tool_result_content
+                }
+                a_messages.append({"role": "user", "content": [tool_result]})
                 id += 1
             else:
                 raise ValueError(f"Invalid message type: {message['type']}")
 
-            # Check first message is user
-            if not a_messages[0]["role"] == "user":
-                raise ValueError(f"First message is not user: {a_messages}")
+        # Ensure the first message is from the user
+        if a_messages and a_messages[0]["role"] != "user":
+            a_messages.insert(0, {"role": "user", "content": "Hello, I have a question."})
 
-            # Check if messages alternate between user and assistant
-            for i in range(len(a_messages) - 1):
-                if a_messages[i]["role"] == a_messages[i + 1]["role"]:
-                    raise ValueError(f"Messages do not alternate between user and assistant: {a_messages}")
+        # Ensure messages alternate between user and assistant
+        cleaned_messages = []
+        for i, message in enumerate(a_messages):
+            cleaned_messages.append(message)
+            if i < len(a_messages) - 1 and message["role"] == a_messages[i+1]["role"]:
+                filler_role = "user" if message["role"] == "assistant" else "assistant"
+                filler_content = "I understand. Please continue." if filler_role == "assistant" else "Thank you. I have another question."
+                cleaned_messages.append({"role": filler_role, "content": filler_content})
 
-            prev_message_type = message["type"]
+        logger.info(f"Final messages to be sent to API: {json.dumps(cleaned_messages, indent=2)}")
 
         # Call anthropic API
-        client = AsyncAnthropic(api_key=config.get_anthropic_api_key())
-        response = await client.messages.create(
-            model=config.get_config_value("config", "ANTHROPIC_MODEL"),
-            max_tokens=2048,
-            messages=a_messages,
-            tools=anthropic_tools,
-            system=SYSTEM_PROMPT
-        )
+        client = AsyncAnthropic(api_key=self.config.get_anthropic_api_key())
+        try:
+            response = await client.messages.create(
+                model=self.config.get_config_value("config", "ANTHROPIC_MODEL"),
+                max_tokens=2048,
+                messages=cleaned_messages,
+                tools=anthropic_tools,
+                system=SYSTEM_PROMPT
+            )
+        except Exception as e:
+            logger.error(f"Error calling Anthropic API: {str(e)}")
+            logger.error(f"Messages sent to API: {json.dumps(cleaned_messages, indent=2)}")
+            raise
 
         # Extract content, timestamp, and function calls from the response
         text_content = ""
@@ -186,13 +191,15 @@ class llm_wrapper:
                 function_calls.append({
                     "name": content_item.name,
                     "parameters": content_item.input,
-                    #"id": content_item.id
                 })
+
+        logger.info(f"Response received: {text_content}")
+        logger.info(f"Function calls: {json.dumps(function_calls, indent=2)}")
 
         # Print the response
         if text_content:
-          formatted_response = format_response(text_content)
-          print_formatted_text(formatted_response, style=custom_style)
+            formatted_response = format_response(text_content)
+            print_formatted_text(formatted_response, style=custom_style)
 
         # Return in the standardized format
         return {
@@ -201,8 +208,7 @@ class llm_wrapper:
             "function_calls": function_calls
         }
 
-
-    async def call_openai_api(self, messages=None, config=None, tools=tools, tool_choice="auto"):
+    async def call_openai_api(self, messages=None, tools=tools, tool_choice="auto"):
         # Convert messages to OpenAI's format
         oai_messages = []
         for message in messages:
@@ -235,9 +241,9 @@ class llm_wrapper:
         oai_messages.append({"role": "system", "content": SYSTEM_PROMPT})
 
         # Call OpenAI API
-        client = AsyncOpenAI(api_key=config.get_openai_api_key())
+        client = AsyncOpenAI(api_key=self.config.get_openai_api_key())
         response = await client.chat.completions.create(
-            model=config.get_config_value("config", "OPENAI_MODEL"),
+            model=self.config.get_config_value("config", "OPENAI_MODEL"),
             messages=oai_messages,
             tools=tools,
             tool_choice=tool_choice

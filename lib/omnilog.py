@@ -23,7 +23,7 @@ class OmniLogVectorStore:
     def add_entry(self, entry: Dict[str, Any]) -> str:
         entry_id = entry.get('id') or entry['timestamp']
         content = self._serialize_content(entry['content'])
-        
+
         self.collection.add(
             documents=[content],
             metadatas=[{
@@ -33,7 +33,7 @@ class OmniLogVectorStore:
             }],
             ids=[entry_id]
         )
-        
+
         return entry_id
 
     def get(self, entry_id: str) -> Optional[Dict[str, Any]]:

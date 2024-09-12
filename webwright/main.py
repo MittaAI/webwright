@@ -93,6 +93,7 @@ def custom_exception_handler(loop, context):
 
 async def process_shell_query(username, query, config, chat_log):
     try:
+        print("pre chAT log")
         # Add user query to the chat log
         chat_log.add_entry({
             'content': query,
@@ -103,6 +104,7 @@ async def process_shell_query(username, query, config, chat_log):
         return success
 
     except Exception as e:
+        print("to here")
         error_message = f"Error: {str(e)}"
         print_formatted_text(FormattedText([('class:error', f"system> {error_message}")]), style=custom_style)
         logger.error(error_message)
