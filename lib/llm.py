@@ -153,6 +153,15 @@ class llm_wrapper:
             else:
                 raise ValueError(f"Invalid message type: {message['type']}")
 
+            # Check first message is user
+            if not a_messages[0]["role"] == "user":
+                raise ValueError(f"First message is not user: {a_messages}")
+
+            # Check if messages alternate between user and assistant
+            for i in range(len(a_messages) - 1):
+                if a_messages[i]["role"] == a_messages[i + 1]["role"]:
+                    raise ValueError(f"Messages do not alternate between user and assistant: {a_messages}")
+
             prev_message_type = message["type"]
 
         # Call anthropic API

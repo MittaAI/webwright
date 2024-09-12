@@ -38,7 +38,7 @@ UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
 llm = llm_wrapper()
 
-async def execute_function_by_name(function_name, olog, **kwargs):
+async def execute_function_by_name(function_name, olog_history, **kwargs):
     logger.info(f"Calling {function_name} with arguments {kwargs}")
     
     if function_name not in callable_registry:
@@ -53,7 +53,7 @@ async def execute_function_by_name(function_name, olog, **kwargs):
         # Check if the function accepts 'olog' as a parameter
         function_params = inspect.signature(function_to_call).parameters
         if 'olog' in function_params:
-            kwargs['olog'] = olog
+            kwargs['olog'] = olog_history
 
         if asyncio.iscoroutinefunction(function_to_call):
             # If it's a coroutine function, await it
