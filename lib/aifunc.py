@@ -80,7 +80,6 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
         
         try:
             llm_response = await llm.call_llm_api(messages=messages, config=config, tools=tools, tool_choice="auto")
-            print(llm_response)
         except Exception as e:
             raise Exception(f"Failed to get a response from LLM: {str(e)}")
         
@@ -107,7 +106,6 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
                 result = await execute_function_by_name(func_call["name"], olog, **func_call["parameters"])
                 
                 # add llm response
-                # TODO dont json dump the result, for openai handle in llm class
                 olog.add_entry({
                     'content': {
                         "tool": func_call["name"],
