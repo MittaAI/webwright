@@ -261,6 +261,12 @@ class Config:
             models = client.models.list()
             model_choices = [(model.id, model.id) for model in models.data if "gpt" in model.id.lower()]
             
+            # Manually add 'o1-preview' and 'o1-mini' to the model choices
+            model_choices.extend([
+                ("o1-preview", "o1-preview"),
+                ("o1-mini", "o1-mini")
+            ])
+
             selected_model = radiolist_dialog(
                 title="Select OpenAI Model",
                 text="Choose an OpenAI model from the list below:",

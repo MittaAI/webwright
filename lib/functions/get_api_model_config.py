@@ -2,12 +2,12 @@ from lib.function_wrapper import function_info_decorator
 from lib.config import Config
 import asyncio
 
+from prompt_toolkit.shortcuts import input_dialog, radiolist_dialog, yes_no_dialog
+
 @function_info_decorator
-async def get_api_model_config(config_type: str, spinner=None) -> dict:
+async def get_api_model_config(config_type: str, provider: str = None, spinner=None) -> dict:
     """
     Configure, validate, and retrieve API settings for OpenAI or Anthropic. Will return the model we're talking to as well.
-
-    Asked about what model you are, or your identity? Use this function!
 
     This function performs the following tasks based on the config_type:
     1. For 'switch_provider':
@@ -23,10 +23,14 @@ async def get_api_model_config(config_type: str, spinner=None) -> dict:
     4. For 'get_config':
     - Retrieves and returns the current API configuration, including the preferred API, API key status, and selected model
 
+    If no provider is passed, the user will be prompted to select one.
+
     :param config_type: Specifies the configuration action. 
                         Options: 'switch_provider', 'openai', 'anthropic', 'set_openai_model', 'set_anthropic_model', 'get_config'
     :type config_type: str
-    :param spinner: Optional progress indicator for long-running operations
+    :param provider: Specifies 'openai' or 'anthropic' as the provider. If not provided, the function will prompt the user to select one.
+    :type provider: str
+    :param spinner: Progress indicator for long-running operations
     :type spinner: object
 
     :return: A dictionary with 'success' (bool) and 'message' (str) keys. 
@@ -35,14 +39,31 @@ async def get_api_model_config(config_type: str, spinner=None) -> dict:
 
     :raises ValueError: If an invalid config_type is provided
     """
+    
     config = Config()
     
     # Clear the cache for token validation functions
     config.check_openai_token.cache_clear()
     config.check_anthropic_token.cache_clear()
-    
+
     try:
         loop = asyncio.get_event_loop()
+
+        # Function to prompt user to select a provider if not provided
+        async def get_provider():
+            if provider:
+                return provider.lower()
+            else:
+                provider_choices = [("openai", "OpenAI"), ("anthropic", "Anthropic")]
+                selected_provider = radiolist_dialog(
+                    title="Select API Provider",
+                    text="Choose the API provider from the list below:",
+                    values=provider_choices
+                ).run()
+                if selected_provider:
+                    return selected_provider
+                else:
+                    raise ValueError("No API provider selected.")
 
         async def validate_and_set_key(api_type):
             existing_key = config.get_config_value("config", f"{api_type.upper()}_API_KEY")
@@ -89,13 +110,16 @@ async def get_api_model_config(config_type: str, spinner=None) -> dict:
             
             return {"success": True, "message": f"{api_type.capitalize()} API configured successfully."}
 
+        # Get the provider either from parameter or prompt user
+        selected_provider = await get_provider()
+
         if config_type == 'get_config':
             preferred_api = config.get_config_value("config", "PREFERRED_API")
             api_key = config.get_config_value("config", f"{preferred_api.upper()}_API_KEY") if preferred_api else None
             model = config.get_config_value("config", f"{preferred_api.upper()}_MODEL") if preferred_api else None
             return {
                 "success": True,
-                "message": f"Current configuration retrieved. Your model and provider are provided below. Allows you to respond to who you are.",
+                "message": f"Current configuration retrieved. Your model and provider are provided below.",
                 "preferred_api": preferred_api,
                 "api_key_set": bool(api_key and api_key != "NONE"),
                 "model": model if model and model != "NONE" else None
@@ -104,7 +128,7 @@ async def get_api_model_config(config_type: str, spinner=None) -> dict:
         if config_type == 'switch_provider':
             current_provider = config.get_config_value("config", "PREFERRED_API")
             print(f"Current preferred API: {current_provider}")
-            new_provider = await loop.run_in_executor(None, input, "Enter the API to switch to (openai/anthropic): ")
+            new_provider = await get_provider()
             
             if new_provider.lower() not in ['openai', 'anthropic']:
                 return {"success": False, "message": "Invalid provider. Must be 'openai' or 'anthropic'."}
@@ -117,7 +141,7 @@ async def get_api_model_config(config_type: str, spinner=None) -> dict:
                 result = setup_result
 
         elif config_type in ['openai', 'anthropic']:
-            result = await setup_api(config_type)
+            result = await setup_api(selected_provider)
 
         elif config_type in ['set_openai_model', 'set_anthropic_model']:
             api_type = 'openai' if config_type == 'set_openai_model' else 'anthropic'

@@ -80,9 +80,9 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
     # loop over max_function_calls
     while function_call_count < max_function_calls:
         messages = olog.get_recent_entries(10)
-        spinner = Halo(text='Thinking...')
+        spinner = Halo(text='Agent >')
         spinner.start()
-        
+
         try:
             llm_response = await llm.call_llm_api(messages=messages, tools=tools, tool_choice="auto")
         except Exception as e:
@@ -91,8 +91,8 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
         if not llm_response:
             raise Exception("Empty response from LLM")
         
+        # stop the spinner and cArry on
         spinner.stop()
-        spinner.clear()
         
         if not llm_response.get("function_calls"):
             olog.add_entry({

@@ -235,19 +235,26 @@ class llm_wrapper:
             else:
                 raise ValueError(f"Invalid message type: {message['type']}")
 
-        #print(oai_messages)
-
         # Add system prompt
-        oai_messages.append({"role": "system", "content": SYSTEM_PROMPT})
+        if "o1" not in self.config.get_config_value("config", "OPENAI_MODEL"):
+            oai_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
+
+        # Prepare parameters for OpenAI API call
+        api_params = {
+            "model": self.config.get_config_value("config", "OPENAI_MODEL"),
+            "messages": oai_messages
+        }
+
+        # If the model contains "o1", do not include tools or tool_choice
+        if "o1" not in self.config.get_config_value("config", "OPENAI_MODEL"):
+            api_params["tools"] = tools
+            api_params["tool_choice"] = tool_choice
+
+        logger.info(oai_messages)
 
         # Call OpenAI API
         client = AsyncOpenAI(api_key=self.config.get_openai_api_key())
-        response = await client.chat.completions.create(
-            model=self.config.get_config_value("config", "OPENAI_MODEL"),
-            messages=oai_messages,
-            tools=tools,
-            tool_choice=tool_choice
-        )
+        response = await client.chat.completions.create(**api_params)
 
         # Extract content, timestamp, and function calls from the response
         assistant_message = response.choices[0].message
@@ -270,6 +277,7 @@ class llm_wrapper:
 
         # Print the response
         if content:
+          print()
           formatted_response = format_response(content)
           print_formatted_text(formatted_response, style=custom_style)
 
