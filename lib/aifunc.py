@@ -36,7 +36,7 @@ logger = get_logger()
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
 
-async def execute_function_by_name(function_name, f_config, olog_history, **kwargs):
+async def execute_function_by_name(function_name, f_llm, olog_history, **kwargs):
     logger.info(f"Calling {function_name} with arguments {kwargs}")
     
     if function_name not in callable_registry:
@@ -53,8 +53,8 @@ async def execute_function_by_name(function_name, f_config, olog_history, **kwar
         if 'olog' in function_params:
             kwargs['olog'] = olog_history
 
-        if 'config' in function_params:
-            kwargs['config'] = f_config
+        if 'llm' in function_params:
+            kwargs['llm'] = f_llm
 
         if asyncio.iscoroutinefunction(function_to_call):
             # If it's a coroutine function, await it
@@ -109,7 +109,7 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
                 if func_call["name"] == "set_api_config_dialog":
                     func_call["parameters"]["spinner"] = spinner
                 
-                result = await execute_function_by_name(func_call["name"], config, olog, **func_call["parameters"])
+                result = await execute_function_by_name(func_call["name"], llm, olog, **func_call["parameters"])
                 
                 # add llm response
                 olog.add_entry({

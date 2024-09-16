@@ -4,7 +4,7 @@ from lib.function_wrapper import function_info_decorator
 from lib.llm import llm_wrapper
 
 @function_info_decorator
-def search(search_term: str, config=None, olog=None) -> dict:
+def search(search_term: str, olog=None) -> dict:
     """
     Uses an instance of Omnilog class defined in aifunc.py to search for entries with context.
     Use this function to search historic chat entries for a specific term.
@@ -14,12 +14,7 @@ def search(search_term: str, config=None, olog=None) -> dict:
     :return: A dictionary containing search results.
     :rtype: dict
     """
-
-    print(config)
-    # Use the search_entries_with_context method to search
     results = olog.search_entries_with_context(search_term)
-    #results = "my brain is empty"
-    #print(results)
 
     return {
         "success": True,

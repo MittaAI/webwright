@@ -94,15 +94,15 @@ class llm_wrapper:
         self.llm = llm
         self.config = config
 
-    async def call_llm_api(self, messages=None, tools=tools, tool_choice="auto", llm=None):
+    async def call_llm_api(self, messages=None, tools=tools, tool_choice="auto", llm=None, model=None):
         if llm:
             self.llm = llm
         else:
             self.llm = self.config.get_config_value("config", "PREFERRED_API")
         if self.llm == "openai":
-            return await self.call_openai_api(messages, tools, tool_choice)
+            return await self.call_openai_api(messages, tools, tool_choice, model)
         elif self.llm == "anthropic":
-            return await self.call_anthropic_api(messages, tools, tool_choice)
+            return await self.call_anthropic_api(messages, tools, tool_choice, model)
     
     async def call_anthropic_api(self, messages=None, tools=tools, tool_choice="auto"):
         logger.info("Starting call_anthropic_api method")
@@ -208,7 +208,7 @@ class llm_wrapper:
             "function_calls": function_calls
         }
 
-    async def call_openai_api(self, messages=None, tools=tools, tool_choice="auto"):
+    async def call_openai_api(self, messages=None, tools=tools, tool_choice="auto", model = None):
         # Convert messages to OpenAI's format
         oai_messages = []
         for message in messages:
@@ -235,18 +235,20 @@ class llm_wrapper:
             else:
                 raise ValueError(f"Invalid message type: {message['type']}")
 
-        # Add system prompt
-        if "o1" not in self.config.get_config_value("config", "OPENAI_MODEL"):
-            oai_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
+        # If not model is provided, use the config value
+        # If the model contains "o1", do not include tools or tool_choice
+        if not model:
+            model = self.config.get_config_value("config", "OPENAI_MODEL")
 
         # Prepare parameters for OpenAI API call
         api_params = {
-            "model": self.config.get_config_value("config", "OPENAI_MODEL"),
+            "model": model,
             "messages": oai_messages
         }
 
-        # If the model contains "o1", do not include tools or tool_choice
-        if "o1" not in self.config.get_config_value("config", "OPENAI_MODEL"):
+        # Add system prompt
+        if "o1" not in model:
+            oai_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
             api_params["tools"] = tools
             api_params["tool_choice"] = tool_choice
 
