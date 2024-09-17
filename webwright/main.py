@@ -99,7 +99,12 @@ async def process_shell_query(username, query, config, chat_log):
             'type': 'user_query',
             'timestamp': datetime.now().isoformat()
         })
-        success = await ai(username=username, config=config, olog=chat_log)
+        success, formatted_responses = await ai(username=username, config=config, olog=chat_log)
+        
+        # Print all formatted responses
+        for response in formatted_responses:
+            print_formatted_text(response, style=custom_style)
+        
         return success
 
     except Exception as e:
@@ -107,8 +112,8 @@ async def process_shell_query(username, query, config, chat_log):
         print_formatted_text(FormattedText([('class:error', f"system> {error_message}")]), style=custom_style)
         logger.error(error_message)
         logger.error(traceback.format_exc())
-        print_formatted_text(traceback.format_exc())
-        return False, {"error": error_message}
+        print_formatted_text(FormattedText([('class:error', traceback.format_exc())]), style=custom_style)
+        return False
 
 async def main(config):
     username = config.get_username()
@@ -146,8 +151,6 @@ async def main(config):
                 return
             
             success = await process_shell_query(username, question, config, chat_log)
-            if success:
-                print()
             
         except Exception as e:
             print_formatted_text(FormattedText([('class:error', f"system> Error: {str(e)}")]), style=custom_style)

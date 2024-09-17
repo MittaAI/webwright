@@ -26,41 +26,16 @@ from prompt_toolkit.formatted_text import FormattedText
 logger = get_logger()
 
 SYSTEM_PROMPT = """
-You are an intelligent assistant that helps users accomplish their tasks efficiently. Follow these guidelines:
+You are an intelligent assistant that helps users accomplish tasks efficiently. Follow these guidelines:
 
 1. Analyze the user's request and break it down into executable steps.
 2. Provide a concise overview of your planned steps, including the specific functions you intend to call.
-3. Execute the necessary functions to complete the task.
-4. Minimize the number of function calls while ensuring task completion.
-5. For sequences of 3 or more functions, or when modifying files, ask the user for confirmation before proceeding.
-6. After executing a function, report what was actually done rather than restating intentions.
-
-Example interaction:
-
-User: Analyze the performance of our data processing script and suggest improvements.
-
-Assistant: To accomplish this task, I plan to:
-
-1. Read the current script using 'read_file'.
-2. Analyze the script's content for performance bottlenecks.
-3. Create an optimized version using 'write_file'.
-4. Execute both versions with 'execute_script' to compare performance.
-
-This plan involves reading, writing, and executing files. Shall I proceed?
-
-User: Yes, go ahead.
-
-Assistant: Thank you for the confirmation. I'll proceed with the plan.
-
-1. I've read the contents of the current script using the 'read_file' function. The script is 150 lines long and primarily uses pandas for data processing.
-
-2. After analyzing the content, I've identified several areas for optimization, including replacing inefficient loops with vectorized operations and optimizing I/O operations.
-
-3. I've created an optimized version of the script using the 'write_file' function. The new script is 120 lines long and incorporates the identified improvements.
-
-4. I've executed both the original and optimized scripts using the 'execute_script' function. The original script took 45 seconds to run, while the optimized version completed in 28 seconds, a 37% improvement in execution time.
-
-Would you like me to provide a detailed breakdown of the optimizations made?
+3. Pause between function executions to ask the user for confirmation before proceeding, especially when modifying files or executing commands.
+4. After executing a function, explain what was done.
+5. Before executing any Docker commands, including starting containers, you must first use the 'search_file' function to look for 'Dockerfile' and 'docker-compose.yml' files in the project directory. Only proceed with Docker operations if these files are found.
+6. Minimize the number of function calls while ensuring task completion.
+7. If you search for a file, or search for memories (through search), you should probably tell the user what you are going to do next.
+8. If you don't know what the user is talking about, or don't have any information about the matter, use the search function to search for different keyterms that may be related to what they are saying, or what is in your short term memory.
 """
 
 def safe_convert_to_dict(content):
@@ -89,7 +64,6 @@ class llm_wrapper:
       }
     """
 
-
     def __init__(self, llm="anthropic", config=None):
         self.llm = llm
         self.config = config
@@ -104,7 +78,7 @@ class llm_wrapper:
         elif self.llm == "anthropic":
             return await self.call_anthropic_api(messages, tools, tool_choice, model)
     
-    async def call_anthropic_api(self, messages=None, tools=tools, tool_choice="auto"):
+    async def call_anthropic_api(self, messages=None, tools=tools, tool_choice="auto", model=None):
         logger.info("Starting call_anthropic_api method")
         
         # Convert tools to anthropic format
@@ -162,7 +136,7 @@ class llm_wrapper:
                 filler_content = "I understand. Please continue." if filler_role == "assistant" else "Thank you. I have another question."
                 cleaned_messages.append({"role": filler_role, "content": filler_content})
 
-        logger.info(f"Final messages to be sent to API: {json.dumps(cleaned_messages, indent=2)}")
+        # logger.info(f"Final messages to be sent to API: {json.dumps(cleaned_messages, indent=2)}")
 
         # Call anthropic API
         client = AsyncAnthropic(api_key=self.config.get_anthropic_api_key())
@@ -196,19 +170,20 @@ class llm_wrapper:
         logger.info(f"Response received: {text_content}")
         logger.info(f"Function calls: {json.dumps(function_calls, indent=2)}")
 
-        # Print the response
+        # Remove the print_formatted_text call
+        formatted_response = None
         if text_content:
             formatted_response = format_response(text_content)
-            print_formatted_text(formatted_response, style=custom_style)
 
-        # Return in the standardized format
+        # Return in the standardized format, including the formatted_response
         return {
             "content": text_content,
             "timestamp": timestamp,
-            "function_calls": function_calls
+            "function_calls": function_calls,
+            "formatted_response": formatted_response
         }
 
-    async def call_openai_api(self, messages=None, tools=tools, tool_choice="auto", model = None):
+    async def call_openai_api(self, messages=None, tools=tools, tool_choice="auto"):
         # Convert messages to OpenAI's format
         oai_messages = []
         for message in messages:
@@ -252,6 +227,10 @@ class llm_wrapper:
             api_params["tools"] = tools
             api_params["tool_choice"] = tool_choice
 
+        # Override model if provided
+        if model:
+            api_params["model"] = model
+            
         logger.info(oai_messages)
 
         # Call OpenAI API
@@ -277,16 +256,16 @@ class llm_wrapper:
                   print(f"Failed to process tool call: {tool_call}")
                   print(f"Error: {e}")
 
-        # Print the response
+        # Remove the print_formatted_text call
+        formatted_response = None
         if content:
-          print()
-          formatted_response = format_response(content)
-          print_formatted_text(formatted_response, style=custom_style)
+            formatted_response = format_response(content)
 
-        # Return in the standardized format
+        # Return in the standardized format, including the formatted_response
         return {
             "content": content,
             "timestamp": timestamp,
-            "function_calls": function_calls
+            "function_calls": function_calls,
+            "formatted_response": formatted_response
         }
 

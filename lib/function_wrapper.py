@@ -125,15 +125,16 @@ def load_functions_from_directory(directory):
 functions_directory = os.path.join(os.path.dirname(__file__), 'functions')
 load_functions_from_directory(functions_directory)
 
+"""
 @function_info_decorator
 async def multi_tool_use_parallel(tool_uses):
-    """
+    ""
     Execute multiple tool uses in parallel.
 
     :param tool_uses: A list of tool use objects, each containing 'recipient_name' and 'parameters'.
     :type tool_uses: list
     :return: A list of results from the executed tool uses.
-    """
+    ""
     async def execute_tool(tool_use):
         function_name = tool_use['recipient_name']
         parameters = tool_use['parameters']
@@ -157,3 +158,4 @@ multi_tool_use_parallel.function_info['parameters']['properties']['tool_uses'] =
 
 # Add multi_tool_use_parallel to callable_registry
 callable_registry['multi_tool_use_parallel'] = multi_tool_use_parallel
+"""

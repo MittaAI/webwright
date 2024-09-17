@@ -77,10 +77,12 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
     # get the LLM wrapper
     llm = llm_wrapper(config=config)
 
+    formatted_responses = []
+
     # loop over max_function_calls
     while function_call_count < max_function_calls:
         messages = olog.get_recent_entries(10)
-        spinner = Halo(text='Agent >')
+        spinner = Halo(text='Calling LLM...', spinner='dots')
         spinner.start()
 
         try:
@@ -91,7 +93,7 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
         if not llm_response:
             raise Exception("Empty response from LLM")
         
-        # stop the spinner and cArry on
+        # stop the spinner and carry on
         spinner.stop()
         
         if not llm_response.get("function_calls"):
@@ -100,11 +102,13 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
                 'type': 'llm_response',
                 'timestamp': datetime.now().isoformat()
             })
-            return True
+            if llm_response.get("formatted_response"):
+                formatted_responses.append(llm_response["formatted_response"])
+            return True, formatted_responses
 
         for func_call in llm_response["function_calls"]:
             try:
-                print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]), style=custom_style)
+                formatted_responses.append(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]))
                 
                 if func_call["name"] == "set_api_config_dialog":
                     func_call["parameters"]["spinner"] = spinner
@@ -124,10 +128,10 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
                 function_call_count += 1
 
             except json.JSONDecodeError as e:
-                print(f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")
+                formatted_responses.append(FormattedText([('class:error', f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")]))
             except Exception as e:
-                print(traceback.format_exc())
-                print(f"Error executing function")
+                formatted_responses.append(FormattedText([('class:error', f"Error executing function: {str(e)}")]))
+                formatted_responses.append(FormattedText([('class:error', traceback.format_exc())]))
 
     # function calls maxed out, do something
-    return True
+    return True, formatted_responses

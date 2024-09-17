@@ -1,159 +1,122 @@
 import os
 import subprocess
 import re
+import shutil
+import random
 from lib.util import setup_main_logging, get_logger
 from lib.function_wrapper import function_info_decorator
 
 # Initialize logging
 logger = setup_main_logging()
 
-@function_info_decorator
-def manage_app_container(action: str, app_path: str, port: int, docker_compose: bool = False) -> dict:
-    """
-    Allows the agent to start, stop, restart, and recreate container actions.
+# Find Docker and Docker Compose executables
+DOCKER_PATH = shutil.which("docker")
+DOCKER_COMPOSE_PATH = shutil.which("docker-compose")
 
-    Example: "start the app" would start the Docker container for the app if it wasn't running.
+@function_info_decorator
+def manage_app_container(action: str, app_path: str, port: int = None) -> dict:
+    """
+    Manages Docker container actions: start, stop, restart, and recreate.
+    Prioritizes using Docker Compose if a docker-compose.yml file is present.
+    Assigns a random port between 8100 and 8200 if not provided when using Dockerfile.
 
     :param action: The action to perform: 'start', 'stop', 'restart', or 'recreate'.
-    :type action: str
     :param app_path: The path to the application directory.
-    :type app_path: str
-    :param port: The port number on which the application should run.
-    :type port: int
-    :param docker_compose: Boolean flag to indicate if docker-compose should be used.
-    :type docker_compose: bool
+    :param port: The port number on which the application should run (optional, used only for Dockerfile).
     :return: A dictionary containing the success status and any relevant messages.
-    :rtype: dict
     """
     original_dir = os.getcwd()
     docker_compose_file = os.path.join(app_path, 'docker-compose.yml')
 
+    if not DOCKER_PATH:
+        return {"success": False, "message": "Docker executable not found. Please ensure Docker is installed and in your PATH."}
+
     try:
-        # Change to the application directory
         os.chdir(app_path)
         logger.info(f"Changed to application directory: {app_path}")
 
         if os.path.exists(docker_compose_file):
-            if not docker_compose:
-                return {
-                    "success": False,
-                    "message": "docker-compose.yml file found. Please set the docker_compose flag to True to use Docker Compose."
-                }
-
-            if action == 'stop' or action == 'restart':
-                stop_command = f"docker-compose down"
-                subprocess.run(stop_command, shell=True, check=True)
-                logger.info("Docker Compose services stopped successfully.")
-                if action == 'stop':
-                    return {"success": True, "message": "Docker Compose services stopped successfully."}
-
-            if action == 'start' or action == 'recreate' or action == 'restart':
-                start_command = f"docker-compose up -d"
-                subprocess.run(start_command, shell=True, check=True)
-                logger.info("Docker Compose services started successfully.")
-                return {"success": True, "message": "Docker Compose services started successfully."}
-
+            return _handle_docker_compose(action)
         else:
-            # Get the project name from the application directory
-            if app_path == './' or app_path == '.' or not app_path:
-                project_name = os.path.basename(os.getcwd())
-            else:
-                project_name = os.path.basename(app_path)
-
-            # Generate container name based on the application directory name
-            logger.info(f"project name is {project_name} in {app_path}")
-            container_name = f"{project_name.lower().replace(' ', '_')}_container"
-            image_name = f"{project_name.lower().replace(' ', '_')}_image"
-
-            # Set up logging
-            log_directory = os.path.expanduser(f'~/.webwright/apps/{project_name}')
-            log_file = os.path.join(log_directory, f'{project_name}.log')
-            if not os.path.exists(log_directory):
-                os.makedirs(log_directory)
-
-            # Ensure Dockerfile exists in the current directory
-            if not os.path.exists('Dockerfile'):
-                logger.error("Dockerfile not found in the current directory")
-                return {
-                    "success": False,
-                    "message": "Dockerfile not found in the current directory"
-                }
-
-            # Output the port information before executing any commands
-            port = None
-            with open('Dockerfile', 'r') as dockerfile:
-                for line in dockerfile:
-                    match = re.search(r"EXPOSE (\d+)", line)
-                    if match:
-                        port = match.group(1)
-                        break
-            if not port:
-                logger.error("Port not found in the Dockerfile.")
-                return {
-                    "success": False,
-                    "message": "Port not found in the Dockerfile."
-                }
-            logger.info(f"Detected port: {port}")
-
-            if action == 'stop':
-                stop_command = f"docker stop {container_name} && docker rm {container_name}"
-                subprocess.run(stop_command, shell=True, check=True)
-                logger.info(f"Container {container_name} stopped and removed successfully.")
-
-                return {
-                    "success": True,
-                    "message": f"Container {container_name} stopped and removed successfully."
-                }
-
-            elif action == 'restart':
-                stop_command = f"docker stop {container_name} && docker rm {container_name}"
-                subprocess.run(stop_command, shell=True, check=True)
-                logger.info(f"Container {container_name} stopped and removed successfully for restart.")
-                action = 'start'  # Proceed to the start action after stopping
-
-            if action == 'start' or action == 'recreate':
-                # Build Docker image
-                build_command = f"docker build -t {image_name} ."
-                subprocess.run(build_command, shell=True, check=True)
-                logger.info(f"Docker image {image_name} built successfully.")
-
-                # Start Docker container
-                port_mapping = f"{port}:{port}"
-                run_command = f"docker run -d --name {container_name} -p {port_mapping} {image_name}"
-                subprocess.run(run_command, shell=True, check=True)
-
-                logger.info(f"Container {container_name} started successfully. Access the app at http://localhost:{port}")
-
-                # Log the output
-                log_command = f"docker logs -f {container_name}"
-                with open(log_file, 'a') as log:
-                    subprocess.Popen(log_command, shell=True, stdout=log, stderr=log)
-
-                return {
-                    "success": True,
-                    "message": f"Container {container_name} started successfully. Access the app at http://localhost:{port}"
-                }
-
-            else:
-                logger.error(f"Invalid action specified: {action}. Use 'start', 'stop', 'restart', or 'recreate'.")
-                return {
-                    "success": False,
-                    "message": f"Invalid action specified: {action}. Use 'start', 'stop', 'restart', or 'recreate'."
-                }
+            if port is None:
+                port = random.randint(8100, 8200)
+                logger.info(f"Assigned random port: {port}")
+            return _handle_docker(action, app_path, port)
 
     except subprocess.CalledProcessError as e:
         logger.error(f"An error occurred while running Docker commands: {str(e)}")
-        return {
-            "success": False,
-            "message": f"An error occurred while running Docker commands: {str(e)}"
-        }
+        return {"success": False, "message": f"An error occurred while running Docker commands: {str(e)}"}
     except Exception as e:
         logger.error(f"An unexpected error occurred: {str(e)}")
-        return {
-            "success": False,
-            "message": f"An unexpected error occurred: {str(e)}"
-        }
+        return {"success": False, "message": f"An unexpected error occurred: {str(e)}"}
     finally:
-        # Change back to the original directory
         os.chdir(original_dir)
         logger.info(f"Changed back to the original directory: {original_dir}")
+
+def _handle_docker_compose(action: str) -> dict:
+    if not DOCKER_COMPOSE_PATH:
+        return {"success": False, "message": "Docker Compose executable not found. Please ensure Docker Compose is installed and in your PATH."}
+
+    try:
+        if action in ['stop', 'restart']:
+            subprocess.run([DOCKER_COMPOSE_PATH, "down"], check=True)
+            logger.info("Docker Compose services stopped successfully.")
+            if action == 'stop':
+                return {"success": True, "message": "Docker Compose services stopped successfully."}
+
+        if action in ['start', 'recreate', 'restart']:
+            subprocess.run([DOCKER_COMPOSE_PATH, "up", "--build", "-d"], check=True)
+            logger.info("Docker Compose services started successfully.")
+            return {"success": True, "message": "Docker Compose services started successfully."}
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Docker Compose command failed: {e}")
+        return {"success": False, "message": f"Docker Compose command failed: {e}"}
+
+def _handle_docker(action: str, app_path: str, port: int) -> dict:
+    project_name = os.path.basename(os.path.abspath(app_path))
+    container_name = f"{project_name.lower().replace(' ', '_')}_container"
+    image_name = f"{project_name.lower().replace(' ', '_')}_image"
+
+    if not os.path.exists('Dockerfile'):
+        return {"success": False, "message": "Dockerfile not found in the current directory"}
+
+    dockerfile_port = _get_port_from_dockerfile()
+    if not dockerfile_port:
+        return {"success": False, "message": "Port not found in the Dockerfile."}
+
+    try:
+        if action in ['stop', 'restart']:
+            subprocess.run([DOCKER_PATH, "stop", container_name], check=True)
+            subprocess.run([DOCKER_PATH, "rm", container_name], check=True)
+            logger.info(f"Container {container_name} stopped and removed successfully.")
+            if action == 'stop':
+                return {"success": True, "message": f"Container {container_name} stopped and removed successfully."}
+
+        if action in ['start', 'recreate', 'restart']:
+            subprocess.run([DOCKER_PATH, "build", "-t", image_name, "."], check=True)
+            logger.info(f"Docker image {image_name} built successfully.")
+
+            subprocess.run([
+                DOCKER_PATH, "run", "-d", "--name", container_name,
+                "-p", f"{port}:{dockerfile_port}",
+                image_name
+            ], check=True)
+
+            logger.info(f"Container {container_name} started successfully. Access the app at http://localhost:{port}")
+            return {
+                "success": True,
+                "message": f"Container {container_name} started successfully. Access the app at http://localhost:{port}"
+            }
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Docker command failed: {e}")
+        return {"success": False, "message": f"Docker command failed: {e}"}
+
+def _get_port_from_dockerfile() -> str:
+    with open('Dockerfile', 'r') as dockerfile:
+        for line in dockerfile:
+            match = re.search(r"EXPOSE (\d+)", line)
+            if match:
+                return match.group(1)
+    return None
