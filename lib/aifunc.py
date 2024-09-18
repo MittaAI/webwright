@@ -32,12 +32,9 @@ os.makedirs(webwright_dir, exist_ok=True)
 # Configure logging
 logger = get_logger()
 
-# Storage
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_DIR = os.path.join(BASE_DIR, 'screenshots')
-
 async def execute_function_by_name(function_name, f_llm, olog_history, **kwargs):
     logger.info(f"Calling {function_name} with arguments {kwargs}")
+    logger.info(f"{f_llm} and {olog_history}")
     
     if function_name not in callable_registry:
         logger.error(f"Function {function_name} not found in registry")
@@ -70,7 +67,7 @@ async def execute_function_by_name(function_name, f_llm, olog_history, **kwargs)
         func_logger.error(f"Function {function_name} failed with error: {e}")
         return json.dumps({"error": str(e)})
 
-async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: OmniLogVectorStore = None):
+async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None):
     max_function_calls = 6
     function_call_count = 0
     
@@ -92,7 +89,7 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
         
         if not llm_response:
             raise Exception("Empty response from LLM")
-        
+
         # stop the spinner and carry on
         spinner.stop()
         
@@ -130,6 +127,7 @@ async def ai(username="anonymous", config=None, upload_dir=UPLOAD_DIR, olog: Omn
             except json.JSONDecodeError as e:
                 formatted_responses.append(FormattedText([('class:error', f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")]))
             except Exception as e:
+                print(e)
                 formatted_responses.append(FormattedText([('class:error', f"Error executing function: {str(e)}")]))
                 formatted_responses.append(FormattedText([('class:error', traceback.format_exc())]))
 

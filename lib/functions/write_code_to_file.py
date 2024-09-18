@@ -2,7 +2,7 @@ import os
 from lib.function_wrapper import function_info_decorator
 
 @function_info_decorator
-def write_code_to_files(file_path: str, code: str, use_temp_directory: bool = False) -> dict:
+def write_code_to_files(file_path: str, code: str, use_temp_directory: bool = True) -> dict:
     """
     1. Writes code to a specified file, only if the file doesn't exist.
     2. If the file exists, refuses to update and suggests using apply_code_diff_to_file.
@@ -14,7 +14,7 @@ def write_code_to_files(file_path: str, code: str, use_temp_directory: bool = Fa
     :type file_path: str
     :param code: The code to write to the file.
     :type code: str
-    :param use_temp_directory: Whether the code is standalone and should be saved in a temporary directory. Defaults to False.
+    :param use_temp_directory: Whether the code is standalone and should be saved in a temporary directory. Defaults to True.
     :type use_temp_directory: bool
     :return: A dictionary indicating the success or failure of the operation.
     :rtype: dict

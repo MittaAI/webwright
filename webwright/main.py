@@ -99,6 +99,7 @@ async def process_shell_query(username, query, config, chat_log):
             'type': 'user_query',
             'timestamp': datetime.now().isoformat()
         })
+
         success, formatted_responses = await ai(username=username, config=config, olog=chat_log)
         
         # Print all formatted responses

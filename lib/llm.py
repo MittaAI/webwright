@@ -64,23 +64,21 @@ class llm_wrapper:
       }
     """
 
-    def __init__(self, llm="anthropic", config=None):
-        self.llm = llm
+    def __init__(self, service_api="anthropic", config=None):
+        self.service_api = service_api
         self.config = config
 
-    async def call_llm_api(self, messages=None, tools=tools, tool_choice="auto", llm=None, model=None):
-        if llm:
-            self.llm = llm
+    async def call_llm_api(self, messages=None, tools=tools, tool_choice="auto", service_api=None, model=None):
+        if service_api:
+            self.service_api = service_api
         else:
-            self.llm = self.config.get_config_value("config", "PREFERRED_API")
-        if self.llm == "openai":
+            self.service_api = self.config.get_config_value("config", "PREFERRED_API")
+        if self.service_api == "openai":
             return await self.call_openai_api(messages, tools, tool_choice, model)
-        elif self.llm == "anthropic":
+        elif self.service_api == "anthropic":
             return await self.call_anthropic_api(messages, tools, tool_choice, model)
     
-    async def call_anthropic_api(self, messages=None, tools=tools, tool_choice="auto", model=None):
-        logger.info("Starting call_anthropic_api method")
-        
+    async def call_anthropic_api(self, messages=None, tools=tools, tool_choice="auto", model=None):  
         # Convert tools to anthropic format
         anthropic_tools = [
             {
@@ -95,7 +93,7 @@ class llm_wrapper:
         id = 0
 
         for idx, message in enumerate(messages):
-            logger.info(f"Processing message {idx}: {json.dumps(message, indent=2)}")
+            # logger.info(f"Processing message {idx}: {json.dumps(message, indent=2)}")
             if message["type"] == "user_query":
                 a_messages.append({"role": "user", "content": message["content"]})
             elif message["type"] == "llm_response":
@@ -121,7 +119,7 @@ class llm_wrapper:
                 a_messages.append({"role": "user", "content": [tool_result]})
                 id += 1
             else:
-                raise ValueError(f"Invalid message type: {message['type']}")
+                logger.info(f"Ignoring bad message type: {message['type']}")
 
         # Ensure the first message is from the user
         if a_messages and a_messages[0]["role"] != "user":
@@ -183,7 +181,7 @@ class llm_wrapper:
             "formatted_response": formatted_response
         }
 
-    async def call_openai_api(self, messages=None, tools=tools, tool_choice="auto"):
+    async def call_openai_api(self, messages=None, tools=tools, tool_choice="auto", model=None):
         # Convert messages to OpenAI's format
         oai_messages = []
         for message in messages:
@@ -191,7 +189,7 @@ class llm_wrapper:
                 oai_messages.append({"role": "user", "content": message["content"]})
             elif message["type"] == "llm_response":
                 oai_messages.append({"role": "assistant", "content": message["content"]})
-            elif message["type"] == "tool_call":
+            elif message["type"] == "tool_call" and "o1" not in model:
                 # {'role': 'assistant', 'content': None, 'function_call': {'name': 'cat_file', 'arguments': '{"file_path": "/Users/andylegrand/Desktop/untitled folder/diff.txt"}'}},
                 # {'role': 'function', 'name': 'cat_file', 'content': '{"success": true, "contents": "<returned values>")"}'}]
                 oai_messages.append({
@@ -207,7 +205,7 @@ class llm_wrapper:
                     "name": message["content"]["tool"],
                     "content": message["content"]["response"]
                 })
-            else:
+            elif "o1" not in model:
                 raise ValueError(f"Invalid message type: {message['type']}")
 
         # If not model is provided, use the config value
@@ -220,19 +218,13 @@ class llm_wrapper:
             "model": model,
             "messages": oai_messages
         }
-
+        logger.info(api_params)
         # Add system prompt
         if "o1" not in model:
             oai_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
             api_params["tools"] = tools
             api_params["tool_choice"] = tool_choice
-
-        # Override model if provided
-        if model:
-            api_params["model"] = model
             
-        logger.info(oai_messages)
-
         # Call OpenAI API
         client = AsyncOpenAI(api_key=self.config.get_openai_api_key())
         response = await client.chat.completions.create(**api_params)

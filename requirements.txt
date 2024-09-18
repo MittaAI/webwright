@@ -19,3 +19,4 @@ unidiff
 patch
 chromadb==0.5.4
 chroma-hnswlib==0.7.3
+playsound
