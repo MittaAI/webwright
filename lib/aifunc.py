@@ -30,6 +30,8 @@ from lib.util import format_response
 
 import sys
 
+from lib.response_printer import ResponsePrinter
+
 # Ensure the .webwright directory exists
 webwright_dir = os.path.expanduser('~/.webwright')
 os.makedirs(webwright_dir, exist_ok=True)
@@ -124,6 +126,8 @@ async def litelm_chat_completion_request(messages=None, config = None, tools=Non
       "content": SYSTEM_PROMPT
     })
 
+    rp = ResponsePrinter()
+
     try:
       full_res = []
       previous_num_lines = 0
@@ -138,20 +142,9 @@ async def litelm_chat_completion_request(messages=None, config = None, tools=Non
           full_res.append(chunk)
           content = chunk.choices[0].delta.content
           if content:
-              reconstructed_res = stream_chunk_builder(full_res, messages=messages)
-              raw_text = reconstructed_res.choices[0].message.content
-              lines = raw_text.split('\n')
-              num_lines = len(lines) + 1
-              formatted_text = format_response(raw_text)
+              rp.process_chunk(content)
 
-              clear_lines(previous_num_lines)
-              print_formatted_text(formatted_text, style=custom_style)
-
-              previous_num_lines = num_lines
-
-
-      print("\n")
-
+      rp.process_final_chunk()
       reconstructed_res = stream_chunk_builder(full_res, messages=messages)
       return reconstructed_res
 
