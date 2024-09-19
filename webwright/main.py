@@ -14,7 +14,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.clipboard import ClipboardData
 
 from lib.config import Config
-from lib.util import format_response, get_logger, custom_style
+from lib.util import get_logger, custom_style
 from lib.omnilog import OmniLogVectorStore
 
 try:
@@ -100,11 +100,7 @@ async def process_shell_query(username, query, config, chat_log):
             'timestamp': datetime.now().isoformat()
         })
 
-        success, formatted_responses = await ai(username=username, config=config, olog=chat_log)
-        
-        # Print all formatted responses
-        for response in formatted_responses:
-            print_formatted_text(response, style=custom_style)
+        success = await ai(username=username, config=config, olog=chat_log)
         
         return success
 

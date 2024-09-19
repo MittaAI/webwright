@@ -189,7 +189,7 @@ class llm_wrapper:
                 oai_messages.append({"role": "user", "content": message["content"]})
             elif message["type"] == "llm_response":
                 oai_messages.append({"role": "assistant", "content": message["content"]})
-            elif message["type"] == "tool_call" and "o1" not in model:
+            elif message["type"] == "tool_call" and model and "o1" not in model:
                 # {'role': 'assistant', 'content': None, 'function_call': {'name': 'cat_file', 'arguments': '{"file_path": "/Users/andylegrand/Desktop/untitled folder/diff.txt"}'}},
                 # {'role': 'function', 'name': 'cat_file', 'content': '{"success": true, "contents": "<returned values>")"}'}]
                 oai_messages.append({
@@ -205,11 +205,10 @@ class llm_wrapper:
                     "name": message["content"]["tool"],
                     "content": message["content"]["response"]
                 })
-            elif "o1" not in model:
+            elif model and "o1" not in model:
                 raise ValueError(f"Invalid message type: {message['type']}")
 
         # If not model is provided, use the config value
-        # If the model contains "o1", do not include tools or tool_choice
         if not model:
             model = self.config.get_config_value("config", "OPENAI_MODEL")
 
@@ -218,9 +217,9 @@ class llm_wrapper:
             "model": model,
             "messages": oai_messages
         }
-        logger.info(api_params)
+
         # Add system prompt
-        if "o1" not in model:
+        if model and "o1" not in model:
             oai_messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
             api_params["tools"] = tools
             api_params["tool_choice"] = tool_choice

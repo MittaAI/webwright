@@ -1,23 +1,18 @@
 import json
 import os
 import asyncio
-from tenacity import retry, wait_random_exponential, stop_after_attempt
+
 from halo import Halo
 from datetime import datetime
 
-# Utility imports (assuming these are from your local modules)
-from lib.util import create_and_check_directory
-from prompt_toolkit import PromptSession, print_formatted_text
 from lib.util import get_logger
 from lib.util import setup_function_logging
 
 # Import helper functions and decorators
-from lib.function_wrapper import function_info_decorator, tools, callable_registry
-from git import Repo
+from lib.function_wrapper import tools, callable_registry
 
-from lib.util import custom_style
-from lib.util import format_response
 from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit import print_formatted_text
 
 from lib.llm import llm_wrapper
 from lib.omnilog import OmniLogVectorStore
@@ -74,62 +69,62 @@ async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None)
     # get the LLM wrapper
     llm = llm_wrapper(config=config)
 
-    formatted_responses = []
+    # Process function calls
+    messages = olog.get_recent_entries(10)
+    spinner = Halo(text='Calling LLM...', spinner='dots')
+    spinner.start()
 
-    # loop over max_function_calls
-    while function_call_count < max_function_calls:
-        messages = olog.get_recent_entries(10)
-        spinner = Halo(text='Calling LLM...', spinner='dots')
-        spinner.start()
+    try:
+        llm_response = await llm.call_llm_api(messages=messages, tools=tools, tool_choice="auto")
+    except Exception as e:
+        raise Exception(f"Failed to get a response from LLM: {str(e)}")
+    
+    if not llm_response:
+        raise Exception("Empty response from LLM")
 
+    # stop the spinner and carry on
+    spinner.stop()
+    
+    if not llm_response.get("function_calls"):
+        olog.add_entry({
+            'content': llm_response["content"],
+            'type': 'llm_response',
+            'timestamp': datetime.now().isoformat()
+        })
+        if llm_response.get("formatted_response"):
+            print_formatted_text(llm_response["formatted_response"])
+        return True
+
+    for func_call in llm_response["function_calls"]:
         try:
-            llm_response = await llm.call_llm_api(messages=messages, tools=tools, tool_choice="auto")
-        except Exception as e:
-            raise Exception(f"Failed to get a response from LLM: {str(e)}")
-        
-        if not llm_response:
-            raise Exception("Empty response from LLM")
+            print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]))
+            
+            if func_call["name"] == "set_api_config_dialog":
+                func_call["parameters"]["spinner"] = spinner
+            
+            result = await execute_function_by_name(func_call["name"], llm, olog, **func_call["parameters"])
+            
+            # print the output
+            print_formatted_text(result)
 
-        # stop the spinner and carry on
-        spinner.stop()
-        
-        if not llm_response.get("function_calls"):
+            # add llm response
             olog.add_entry({
-                'content': llm_response["content"],
-                'type': 'llm_response',
+                'content': {
+                    "tool": func_call["name"],
+                    "parameters": json.dumps(func_call["parameters"]),
+                    "response": result
+                },
+                'type': 'tool_call',
                 'timestamp': datetime.now().isoformat()
             })
-            if llm_response.get("formatted_response"):
-                formatted_responses.append(llm_response["formatted_response"])
-            return True, formatted_responses
 
-        for func_call in llm_response["function_calls"]:
-            try:
-                formatted_responses.append(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]))
-                
-                if func_call["name"] == "set_api_config_dialog":
-                    func_call["parameters"]["spinner"] = spinner
-                
-                result = await execute_function_by_name(func_call["name"], llm, olog, **func_call["parameters"])
-                
-                # add llm response
-                olog.add_entry({
-                    'content': {
-                        "tool": func_call["name"],
-                        "parameters": json.dumps(func_call["parameters"]),
-                        "response": result
-                    },
-                    'type': 'tool_call',
-                    'timestamp': datetime.now().isoformat()
-                })
-                function_call_count += 1
 
-            except json.JSONDecodeError as e:
-                formatted_responses.append(FormattedText([('class:error', f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")]))
-            except Exception as e:
-                print(e)
-                formatted_responses.append(FormattedText([('class:error', f"Error executing function: {str(e)}")]))
-                formatted_responses.append(FormattedText([('class:error', traceback.format_exc())]))
+        except json.JSONDecodeError as e:
+            print_formatted_text(FormattedText([('class:error', f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")]))
+        except Exception as e:
+            print(e)
+            print_formatted_text(FormattedText([('class:error', f"Error executing function: {str(e)}")]))
+            print_formatted_text(FormattedText([('class:error', traceback.format_exc())]))
 
     # function calls maxed out, do something
-    return True, formatted_responses
+    return True

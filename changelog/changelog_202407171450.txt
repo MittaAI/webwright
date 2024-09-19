@@ -1,5 +1,0 @@
-# Changelog
-
-## 2024-07-17 14:50:08
-### Changes
-Updated cat_file.py to support UTF-8 encoding.
