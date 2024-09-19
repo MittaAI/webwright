@@ -36,7 +36,7 @@ Webwright requires Anaconda and Docker to be configured on your system.
 
 1. **Install Webwright**
    ```bash
-   pip install -r requirements.txt --no-deps -U chroma-hnswlib==0.7.3
+   pip install webwright
    ```
 
 2. **Set up dependencies**
@@ -168,17 +168,19 @@ For developers who want to install Webwright for testing, building, and running 
 
 3. **Install Dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements.txt --no-deps -U chroma-hnswlib==0.7.3
    ```
 
 4. **Install Git (if not already installed)**
    ```bash
    conda install git
    ```
+
 5. **Add GITHUB_TOKEN to Environment**
    ```bash
    $env:GITHUB_TOKEN = "your_github_token"
    ```
+
 6. **Run Webwright from Source**
    ```bash
    python webwright/main.py
@@ -218,6 +220,7 @@ pip install -r requirements.txt
    ```bash
    pytest
    ```
+NOT WORKING.
 
 3. **Build Package**
    ```bash
