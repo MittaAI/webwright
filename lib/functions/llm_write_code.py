@@ -8,7 +8,8 @@ SYS_PROMPT = "Based on the following description, write the requested code:\n\n:
 @function_info_decorator
 async def llm_write_code(description: str, olog=None, llm=None) -> dict:
     """
-    Generates code based on a given description, utilizing recent context from previous interactions. Always call this function when generate code.
+    Generates code using an alternate LLM to the default model, based on a given description.
+    Utilizes recent context from previous interactions.
 
     :param description: A detailed description of the code to be generated.
     :type description: str
@@ -21,7 +22,7 @@ async def llm_write_code(description: str, olog=None, llm=None) -> dict:
         "type": "user_query",
         "timestamp": datetime.now().isoformat()
     })
-    print(llm.config)
+
     # Retrieve recent entries
     messages = olog.get_recent_entries(5)
     

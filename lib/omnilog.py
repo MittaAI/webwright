@@ -9,17 +9,25 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+import os
+
 class OmniLogVectorStore:
     def __init__(self, path: Optional[str] = None):
         if path is None:
-            self.temp_dir = tempfile.mkdtemp()
-            path = self.temp_dir
+            # Use ~/.webwright/chromadb as the default path
+            home_dir = os.path.expanduser('~')
+            default_path = os.path.join(home_dir, '.webwright', 'chromadb')
+            os.makedirs(default_path, exist_ok=True)
+            self.path = default_path
         else:
-            self.temp_dir = None
+            self.path = path
         
-        self.client = chromadb.PersistentClient(path=path)
+        self.client = chromadb.PersistentClient(
+            path=self.path,
+            settings=chromadb.config.Settings(anonymized_telemetry=False)
+        )
         self.collection = self.client.get_or_create_collection("omnilog")
-
+        
     def add_entry(self, entry: Dict[str, Any]) -> str:
         entry_id = entry.get('id') or entry['timestamp']
         content = self._serialize_content(entry['content'])
@@ -42,48 +50,15 @@ class OmniLogVectorStore:
             return json.loads(result['metadatas'][0]['full_entry'])
         return None
 
-    def get_recent_entries_alternate(self, limit: int = 10) -> List[Dict[str, Any]]:
-        results = self.collection.get()
-        entries = [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
-        sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
-        
-        recent_entries = []
-        last_type = None
-        
-        for entry in sorted_entries:
-            if last_type is None or entry['type'] != last_type:
-                recent_entries.append(entry)
-                last_type = entry['type']
-                if len(recent_entries) >= limit:
-                    break
-        
-        # If we don't have enough entries, try to fill with alternating types
-        if len(recent_entries) < limit:
-            for entry in sorted_entries:
-                if entry not in recent_entries and entry['type'] != last_type:
-                    recent_entries.append(entry)
-                    last_type = entry['type']
-                    if len(recent_entries) >= limit:
-                        break
-        
-        return list(recent_entries)  # Reverse to get chronological order
-
     def get_recent_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
       results = self.collection.get()
       entries = [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
-      
+
       # Sort the entries by timestamp in descending order
       sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
-      
+
       # Return the first 'limit' entries
       return reversed(sorted_entries[:limit])
-
-    def search_entries(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=top_k
-        )
-        return [json.loads(metadata['full_entry']) for metadata in results['metadatas'][0]]
 
     def search_entries_with_context(self, query: str, top_k: int = 5) -> List[Tuple[Dict[str, Any], Optional[Dict[str, Any]]]]:
         results = self.collection.query(
@@ -92,18 +67,21 @@ class OmniLogVectorStore:
             include=["metadatas", "documents", "distances"]
         )
         
-        all_entries = self._get_all_sorted_entries()
-        entries_with_context = []
-        
         logger.debug(f"Search query: {query}")
         logger.debug(f"Number of search results: {len(results['metadatas'][0])}")
         
-        for metadata in results['metadatas'][0]:
+        all_entries = self._get_all_sorted_entries()
+        entries_with_context = []
+        
+        for i, metadata in enumerate(results['metadatas'][0]):
             current_entry = json.loads(metadata['full_entry'])
             adjacent_entry = self._get_adjacent_entry(current_entry, all_entries)
+            
             entries_with_context.append((current_entry, adjacent_entry))
+            
             logger.debug(f"Current entry: {current_entry['type']} - {current_entry['content'][:50]}...")
             logger.debug(f"Adjacent entry: {adjacent_entry['type'] if adjacent_entry else None} - {adjacent_entry['content'][:50] if adjacent_entry else None}...")
+            logger.debug(f"Distance: {results['distances'][0][i]}")
         
         return entries_with_context
 
@@ -218,7 +196,3 @@ class OmniLogVectorStore:
             return content
         else:
             return str(content)
-
-    def __del__(self):
-        if self.temp_dir:
-            shutil.rmtree(self.temp_dir, ignore_errors=True)

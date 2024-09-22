@@ -62,6 +62,13 @@ async def execute_function_by_name(function_name, f_llm, olog_history, **kwargs)
         func_logger.error(f"Function {function_name} failed with error: {e}")
         return json.dumps({"error": str(e)})
 
+def function_calls_to_text(function_calls):
+    text_descriptions = []
+    for call in function_calls:
+        args_text = ", ".join(f"{k}={v}" for k, v in call['arguments'].items())
+        text_descriptions.append(f"Function '{call['name']}' called with arguments: {args_text}")
+    return "\n".join(text_descriptions)
+
 async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None):
     max_function_calls = 6
     function_call_count = 0
@@ -75,16 +82,26 @@ async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None)
     spinner.start()
 
     try:
-        llm_response = await llm.call_llm_api(messages=messages, tools=tools, tool_choice="auto")
+        llm_response = await llm.call_llm_api(messages=messages, tools=tools)
     except Exception as e:
         raise Exception(f"Failed to get a response from LLM: {str(e)}")
-    
-    if not llm_response:
-        raise Exception("Empty response from LLM")
+
+    # After getting llm_response
+    if llm_response.get("function_calls", []):
+        content = llm_response["content"]
+        if not content:
+            content = function_calls_to_text(llm_response["function_calls"])
+
+        olog.add_entry({
+            'content': content,
+            'type': 'llm_response',
+            'timestamp': datetime.now().isoformat(),
+            'function_calls': llm_response.get("function_calls", [])
+        })
 
     # stop the spinner and carry on
     spinner.stop()
-    
+
     if not llm_response.get("function_calls"):
         olog.add_entry({
             'content': llm_response["content"],
@@ -100,31 +117,47 @@ async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None)
             print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]))
             
             if func_call["name"] == "set_api_config_dialog":
-                func_call["parameters"]["spinner"] = spinner
+                func_call["arguments"]["spinner"] = spinner
             
-            result = await execute_function_by_name(func_call["name"], llm, olog, **func_call["parameters"])
-            
-            # print the output
-            print_formatted_text(result)
+            result = await execute_function_by_name(func_call["name"], llm, olog, **func_call["arguments"])
+            logger.info(f"Function {func_call['name']} executed with result: {result}")
 
             # add llm response
             olog.add_entry({
                 'content': {
                     "tool": func_call["name"],
-                    "parameters": json.dumps(func_call["parameters"]),
+                    "arguments": json.dumps(func_call["arguments"]),
                     "response": result
                 },
                 'type': 'tool_call',
                 'timestamp': datetime.now().isoformat()
             })
 
+            # Process function results
+            messages = olog.get_recent_entries(10)     
+            spinner = Halo(text='Calling LLM...', spinner='dots')
+            spinner.start()
 
+            try:
+                system_prompt = "Using the last tool response, summarize the results."
+                llm_response = await llm.call_llm_api(messages=messages, system_prompt=system_prompt, tools=None)
+            except Exception as e:
+                raise Exception(f"Failed to get a response from LLM: {str(e)}")
+            
+            spinner.stop()
+
+            if not llm_response:
+                raise Exception("Empty response from LLM")
+            else:
+                print_formatted_text(llm_response["formatted_response"])
+        
         except json.JSONDecodeError as e:
             print_formatted_text(FormattedText([('class:error', f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")]))
         except Exception as e:
             print(e)
             print_formatted_text(FormattedText([('class:error', f"Error executing function: {str(e)}")]))
             print_formatted_text(FormattedText([('class:error', traceback.format_exc())]))
+
 
     # function calls maxed out, do something
     return True
