@@ -30,7 +30,15 @@ class OmniLogVectorStore:
         
     def add_entry(self, entry: Dict[str, Any]) -> str:
         entry_id = entry.get('id') or entry['timestamp']
-        content = self._serialize_content(entry['content'])
+        
+        if entry['type'] == 'llm_response' and isinstance(entry['content'], list):
+            # Handle structured content for LLM responses with tool calls
+            content = json.dumps(entry['content'])
+        elif entry['type'] == 'tool_call' and isinstance(entry['content'], list):
+            # Handle structured content for tool results
+            content = json.dumps(entry['content'])
+        else:
+            content = self._serialize_content(entry['content'])
 
         self.collection.add(
             documents=[content],
@@ -51,14 +59,28 @@ class OmniLogVectorStore:
         return None
 
     def get_recent_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
-      results = self.collection.get()
-      entries = [json.loads(metadata['full_entry']) for metadata in results['metadatas']]
+        results = self.collection.get()
+        entries = []
+        for metadata in results['metadatas']:
+            try:
+                entry = json.loads(metadata['full_entry'])
+                if entry['type'] in ['llm_response', 'tool_call'] and isinstance(entry['content'], str):
+                    try:
+                        # Attempt to parse the content as JSON
+                        entry['content'] = json.loads(entry['content'])
+                    except json.JSONDecodeError:
+                        # If parsing fails, keep the content as is
+                        pass
+                entries.append(entry)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse entry: {metadata['full_entry']}")
+                continue
 
-      # Sort the entries by timestamp in descending order
-      sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
+        # Sort the entries by timestamp in descending order
+        sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
 
-      # Return the first 'limit' entries
-      return reversed(sorted_entries[:limit])
+        # Return the first 'limit' entries in chronological order
+        return list(reversed(sorted_entries[:limit]))
 
     def search_entries_with_context(self, query: str, top_k: int = 5) -> List[Tuple[Dict[str, Any], Optional[Dict[str, Any]]]]:
         results = self.collection.query(

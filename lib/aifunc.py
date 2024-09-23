@@ -70,39 +70,41 @@ def function_calls_to_text(function_calls):
     return "\n".join(text_descriptions)
 
 async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None):
-    max_function_calls = 6
-    function_call_count = 0
-    
-    # get the LLM wrapper
     llm = llm_wrapper(config=config)
 
-    # Process function calls
+    async def call_llm_with_spinner(messages, system_prompt=None, use_tools=True):
+        spinner = Halo(text='Calling LLM...', spinner='dots')
+        spinner.start()
+        try:
+            return await llm.call_llm_api(
+                messages=messages,
+                system_prompt=system_prompt,
+                tools=tools if use_tools else None
+            )
+        except Exception as e:
+            raise Exception(f"Failed to get a response from LLM: {str(e)}")
+        finally:
+            spinner.stop()
+
     messages = olog.get_recent_entries(10)
-    spinner = Halo(text='Calling LLM...', spinner='dots')
-    spinner.start()
-
-    try:
-        llm_response = await llm.call_llm_api(messages=messages, tools=tools)
-    except Exception as e:
-        raise Exception(f"Failed to get a response from LLM: {str(e)}")
-
-    # After getting llm_response
-    if llm_response.get("function_calls", []):
-        content = llm_response["content"]
-        if not content:
-            content = function_calls_to_text(llm_response["function_calls"])
-
+    llm_response = await call_llm_with_spinner(messages)
+    logger.info(f"LLM response: {llm_response}")
+    if llm_response.get("function_calls"):
+        content = llm_response.get("content") or function_calls_to_text(llm_response["function_calls"])
         olog.add_entry({
-            'content': content,
+            'content': [
+                {"type": "text", "text": content},
+                *[{
+                    "type": "tool_use",
+                    "id": call['id'],
+                    "name": call['name'],
+                    "input": call['arguments']
+                } for call in llm_response["function_calls"]]
+            ],
             'type': 'llm_response',
             'timestamp': datetime.now().isoformat(),
-            'function_calls': llm_response.get("function_calls", [])
         })
-
-    # stop the spinner and carry on
-    spinner.stop()
-
-    if not llm_response.get("function_calls"):
+    else:
         olog.add_entry({
             'content': llm_response["content"],
             'type': 'llm_response',
@@ -113,51 +115,47 @@ async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None)
         return True
 
     for func_call in llm_response["function_calls"]:
+        logger.info(f"Processing function call: {func_call}")
         try:
             print_formatted_text(FormattedText([('class:bold', f"Executing function: {func_call['name']}")]))
             
             if func_call["name"] == "set_api_config_dialog":
-                func_call["arguments"]["spinner"] = spinner
+                func_call["arguments"]["spinner"] = Halo(text='Configuring API...', spinner='dots')
             
             result = await execute_function_by_name(func_call["name"], llm, olog, **func_call["arguments"])
             logger.info(f"Function {func_call['name']} executed with result: {result}")
-
-            # add llm response
-            olog.add_entry({
-                'content': {
-                    "tool": func_call["name"],
-                    "arguments": json.dumps(func_call["arguments"]),
-                    "response": result
-                },
+    
+            log_entry = {
+                'content': [{
+                    "type": "tool_result",
+                    "tool_call_id": func_call['id'],
+                    "name": func_call["name"],
+                    "output": result
+                }],
                 'type': 'tool_call',
                 'timestamp': datetime.now().isoformat()
-            })
+            }
+            logger.info(f"Logging function result: {log_entry}")
+            olog.add_entry(log_entry)
 
-            # Process function results
-            messages = olog.get_recent_entries(10)     
-            spinner = Halo(text='Calling LLM...', spinner='dots')
-            spinner.start()
-
-            try:
-                system_prompt = "Using the last tool response, summarize the results."
-                llm_response = await llm.call_llm_api(messages=messages, system_prompt=system_prompt, tools=None)
-            except Exception as e:
-                raise Exception(f"Failed to get a response from LLM: {str(e)}")
+            messages = olog.get_recent_entries(10)
+            system_prompt = "Using the last tool response, summarize the results."
+            summary_response = await call_llm_with_spinner(messages, system_prompt=system_prompt, use_tools=False)
             
-            spinner.stop()
-
-            if not llm_response:
-                raise Exception("Empty response from LLM")
-            else:
-                print_formatted_text(llm_response["formatted_response"])
+            if not summary_response:
+                raise Exception("Empty response from LLM during summarization")
+            
+            if summary_response.get("formatted_response"):
+                print_formatted_text(summary_response["formatted_response"])
         
         except json.JSONDecodeError as e:
-            print_formatted_text(FormattedText([('class:error', f"Failed to parse function arguments for {func_call.function.name}: {str(e)}")]))
+            error_message = f"Failed to parse function arguments for {func_call['name']}: {str(e)}"
+            print_formatted_text(FormattedText([('class:error', error_message)]))
+            logger.error(error_message)
         except Exception as e:
-            print(e)
-            print_formatted_text(FormattedText([('class:error', f"Error executing function: {str(e)}")]))
+            error_message = f"Error executing function {func_call['name']}: {str(e)}"
+            print_formatted_text(FormattedText([('class:error', error_message)]))
             print_formatted_text(FormattedText([('class:error', traceback.format_exc())]))
+            logger.error(error_message, exc_info=True)
 
-
-    # function calls maxed out, do something
     return True

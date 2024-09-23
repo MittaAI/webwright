@@ -17,7 +17,7 @@ class FunctionWrapper:
         self.func = func
         self.info = self.extract_function_info()
         callable_registry[func.__name__] = func
-        tools.append(self.info)
+        tools.append({"type": "function", "function": self.info})
 
     def extract_function_info(self):
         source = inspect.getsource(inspect.unwrap(self.func))
