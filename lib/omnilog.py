@@ -61,26 +61,29 @@ class OmniLogVectorStore:
     def get_recent_entries(self, limit: int = 10) -> List[Dict[str, Any]]:
         results = self.collection.get()
         entries = []
+
         for metadata in results['metadatas']:
             try:
                 entry = json.loads(metadata['full_entry'])
                 if entry['type'] in ['llm_response', 'tool_call'] and isinstance(entry['content'], str):
                     try:
-                        # Attempt to parse the content as JSON
                         entry['content'] = json.loads(entry['content'])
                     except json.JSONDecodeError:
-                        # If parsing fails, keep the content as is
                         pass
+                
                 entries.append(entry)
+
             except json.JSONDecodeError:
                 logger.warning(f"Failed to parse entry: {metadata['full_entry']}")
                 continue
 
-        # Sort the entries by timestamp in descending order
-        sorted_entries = sorted(entries, key=lambda x: x['timestamp'], reverse=True)
+        # Sort the entries by timestamp in ascending order
+        sorted_entries = sorted(entries, key=lambda x: x['timestamp'])
 
-        # Return the first 'limit' entries in chronological order
-        return list(reversed(sorted_entries[:limit]))
+        # Get the last 'limit' entries
+        recent_entries = sorted_entries[-limit:]
+
+        return recent_entries
 
     def search_entries_with_context(self, query: str, top_k: int = 5) -> List[Tuple[Dict[str, Any], Optional[Dict[str, Any]]]]:
         results = self.collection.query(

@@ -86,9 +86,11 @@ async def ai(username="anonymous", config=None, olog: OmniLogVectorStore = None)
         finally:
             spinner.stop()
 
+    # Get message history (olog) and then call the LLM
     messages = olog.get_recent_entries(10)
     llm_response = await call_llm_with_spinner(messages)
     logger.info(f"LLM response: {llm_response}")
+
     if llm_response.get("function_calls"):
         content = llm_response.get("content") or function_calls_to_text(llm_response["function_calls"])
         olog.add_entry({

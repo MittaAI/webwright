@@ -313,7 +313,11 @@ class llm_wrapper:
         if not system_prompt:
             system_prompt = SYSTEM_PROMPT
 
+        # Add system prompt at the beginning
+        oai_messages.append({"role": "system", "content": system_prompt})
+
         # Convert existing messages to OpenAI format
+        last_assistant_message = None
         for message in messages:
             logger.info(f"Processing message: {message}")
             if message["type"] == "user_query":
@@ -322,30 +326,41 @@ class llm_wrapper:
                 if isinstance(message["content"], list):
                     # Handle structured content (e.g., text and tool use)
                     text_content = next((item["text"] for item in message["content"] if item["type"] == "text"), "")
-                    oai_messages.append({"role": "assistant", "content": text_content})
-
-                    for item in message["content"]:
-                        if item["type"] == "tool_use":
-                            logger.info(f"Processing tool_use: {item}")
-                            oai_messages.append({
-                                "role": "assistant",
-                                "content": f"I've used the {item['name']} function to process the information. Here's what was input: {json.dumps(item['input'])}"
-                            })
+                    tool_use = next((item for item in message["content"] if item["type"] == "tool_use"), None)
+                    
+                    if tool_use:
+                        last_assistant_message = {
+                            "role": "assistant",
+                            "content": text_content,
+                            "tool_calls": [{
+                                "id": tool_use["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": tool_use["name"],
+                                    "arguments": json.dumps(tool_use["input"])
+                                }
+                            }]
+                        }
+                    else:
+                        oai_messages.append({"role": "assistant", "content": text_content})
                 else:
                     oai_messages.append({"role": "assistant", "content": message["content"]})
             elif message["type"] == "tool_call":
-                if "content" in message and isinstance(message["content"], list):
+                if last_assistant_message and "content" in message and isinstance(message["content"], list):
+                    oai_messages.append(last_assistant_message)
                     for tool_result in message["content"]:
                         oai_messages.append({
                             "role": "tool",
                             "content": json.dumps(tool_result["output"]),
-                            "tool_call_id": tool_result.get("tool_call_id", "unknown_id")
+                            "tool_call_id": tool_result["tool_call_id"]
                         })
+                    last_assistant_message = None
             else:
                 logger.info(f"Skipping message with unknown type: {message['type']}")
 
-        # Add system prompt at the beginning
-        oai_messages.insert(0, {"role": "system", "content": system_prompt})
+        # If there's a pending last_assistant_message, add it
+        if last_assistant_message:
+            oai_messages.append(last_assistant_message)
 
         # If no model is provided, use the config value
         if not model:
@@ -357,7 +372,7 @@ class llm_wrapper:
             "messages": oai_messages
         }
 
-        # If we have tools, use them
+        # If we have tools, add them to the API parameters
         if tools:
             api_params["tools"] = tools
 
@@ -408,5 +423,4 @@ class llm_wrapper:
                 "formatted_response": None,
                 "error": str(e)
             }
-
 
