@@ -154,159 +154,138 @@ class llm_wrapper:
         elif self.service_api == "anthropic":
             return await self.call_anthropic_api(messages, system_prompt, tools, model)
 
-
     async def call_anthropic_api(self, messages=None, system_prompt=SYSTEM_PROMPT, tools=None, model=None):
         logger.info("Starting call_anthropic_api method")
         
+        a_messages = []
+        last_assistant_message = None  # Initialize the variable here
+
+        if not system_prompt:
+            system_prompt = SYSTEM_PROMPT
+
         # Convert tools to Anthropic format if provided
         anthropic_tools = []
         if tools:
             for tool in tools:
                 if 'function' in tool:
                     anthropic_tool = {
-                        "type": "function",
-                        "function": {
-                            "name": tool['function']['name'],
-                            "description": tool['function']['description'],
-                            "parameters": {
-                                "type": "object",
-                                "properties": tool['function']['parameters']['properties'],
-                                "required": tool['function']['parameters'].get('required', [])
-                            }
+                        "name": tool['function']['name'],
+                        "description": tool['function']['description'],
+                        "input_schema": {
+                            "type": "object",
+                            "properties": tool['function']['parameters'].get('properties', {}),
+                            "required": tool['function']['parameters'].get('required', [])
                         }
                     }
                     anthropic_tools.append(anthropic_tool)
 
+
         logger.info(f"Converted tools: {json.dumps(anthropic_tools, indent=2)}")
 
-        # Convert messages to Anthropic format and filter out empty messages
-        a_messages = []
-        last_role = None
+        # Convert existing messages to Anthropic format
         for message in messages:
-            logger.debug(f"Processing message: {json.dumps(message, indent=2)}")
-            content = message.get("content", "").strip()
-            if not content:
-                logger.warning(f"Skipping empty message: {message}")
-                continue
-            
+            logger.info(f"Processing message: {message}")
             if message["type"] == "user_query":
-                if last_role == "user":
-                    # If the last message was from the user, add a non-empty assistant message
-                    a_messages.append({"role": "assistant", "content": "I understand. Please continue."})
-                a_messages.append({"role": "user", "content": content})
-                last_role = "user"
+                a_messages.append({"role": "user", "content": message["content"]})
             elif message["type"] == "llm_response":
-                if last_role == "assistant":
-                    # If the last message was from the assistant, add a non-empty user message
-                    a_messages.append({"role": "user", "content": "Thank you. I have another question."})
-                a_messages.append({"role": "assistant", "content": content})
-                last_role = "assistant"
+                if isinstance(message["content"], list):
+                    text_content = next((item["text"] for item in message["content"] if item["type"] == "text"), "")
+                    a_messages.append({"role": "assistant", "content": text_content})
+                else:
+                    a_messages.append({"role": "assistant", "content": message["content"]})
             elif message["type"] == "tool_call":
-                if last_role == "assistant":
-                    # If the last message was from the assistant, add a non-empty user message
-                    a_messages.append({"role": "user", "content": "Please proceed with using the tool."})
-                
-                # Add the function call as part of the assistant's message
-                tool_use_content = [
-                    {
-                        "type": "text",
-                        "text": f"I will now use the {message['content']['tool']} tool to assist with your request."
-                    },
-                    {
-                        "type": "tool_use",
-                        "tool_call": {
-                            "type": "function",
-                            "function": {
-                                "name": message["content"]["tool"],
-                                "arguments": json.dumps(message["content"]["arguments"])
-                            }
-                        }
-                    }
-                ]
-                a_messages.append({"role": "assistant", "content": tool_use_content})
-                
-                # Add tool result as a user message
-                a_messages.append({
-                    "role": "user",
-                    "content": f"The {message['content']['tool']} tool returned: {json.dumps(message['content']['response'])}"
-                })
-                last_role = "user"
+                if last_assistant_message and "content" in message and isinstance(message["content"], list):
+                    # Append the last assistant message before adding tool result
+                    a_messages.append(last_assistant_message)
+
+                    # Loop through tool results and add them as tool responses
+                    for tool_result in message["content"]:
+                        try:
+                            output = json.loads(tool_result["output"])
+                        except json.JSONDecodeError:
+                            logger.error(f"Failed to parse tool result output: {tool_result['output']}")
+                            output = tool_result["output"]
+                        
+                        # Add the tool result to the messages as a plain text role response
+                        a_messages.append({
+                            "role": "tool",
+                            "content": f"Tool result: {json.dumps(output)}",  # Ensure it's a simple text format
+                            "tool_use_id": tool_result["tool_call_id"]
+                        })
+                    
+                    # Reset the last_assistant_message after processing
+                    last_assistant_message = None
             else:
-                logger.warning(f"Ignoring message with unrecognized type: {message['type']}")
-    
+                logger.info(f"Skipping message with unknown type: {message['type']}")
+
+
         logger.info(f"Converted messages: {json.dumps(a_messages, indent=2)}")
 
-        # Ensure there's at least one non-empty message
-        if not a_messages:
-            logger.warning("No valid messages to send to Anthropic API")
-            return {"content": "I apologize, but I don't have enough context to provide a response. Could you please rephrase your question or provide more information?", "function_calls": []}
+        # If no model is provided, use the config value
+        if not model:
+            model = self.config.get_config_value("config", "ANTHROPIC_MODEL")
 
-        # Ensure the first message is from the user and the last from the assistant
-        if a_messages[0]["role"] != "user":
-            a_messages.insert(0, {"role": "user", "content": "Hello, I have a question."})
-        if a_messages[-1]["role"] != "assistant":
-            a_messages.append({"role": "assistant", "content": "Is there anything else I can help you with?"})
+        # Prepare parameters for Anthropic API call
+        api_params = {
+            "model": model,
+            "messages": a_messages,
+            "max_tokens": 2048,
+            "system": system_prompt
+        }
 
-        logger.info("Finalized message sequence")
+        if anthropic_tools:
+            api_params["tools"] = anthropic_tools
 
-        # Call the Anthropic API
-        client = AsyncAnthropic(api_key=self.config.get_anthropic_api_key())
         try:
-            message_params = {
-                "model": model or self.config.get_config_value("config", "ANTHROPIC_MODEL"),
-                "max_tokens": 2048,
-                "messages": a_messages,
-                "system": system_prompt
-            }
+            logger.info(f"API PARAMS: {json.dumps(api_params, indent=2, default=str)}")
 
-            if anthropic_tools:
-                message_params["tools"] = anthropic_tools
-
-            logger.info(f"Sending request to Anthropic API with parameters: {json.dumps(message_params, indent=2, default=str)}")
-
-            response = await client.messages.create(**message_params)
+            # Call Anthropic API
+            client = AsyncAnthropic(api_key=self.config.get_anthropic_api_key())
+            response = await client.messages.create(**api_params)
             logger.info(f"Received response from Anthropic API: {response}")
+
+            # Extract content, timestamp, and function calls from the response
+            content = ""
+            timestamp = datetime.now().isoformat()
+            function_calls = []
+
+            for block in response.content:
+                if isinstance(block, TextBlock):
+                    content += block.text
+                elif isinstance(block, ToolUseBlock):
+                    function_calls.append({
+                        "id": block.id,
+                        "name": block.name,
+                        "arguments": block.input
+                    })
+
+            formatted_response = None
+            if content:
+                formatted_response = format_response(content)
+
+            # Return in the standardized format, including the formatted_response
+            result = {
+                "content": content,
+                "timestamp": timestamp,
+                "function_calls": function_calls,
+                "formatted_response": formatted_response
+            }
+            logger.info(f"LLM FUNCTIONS: {json.dumps(result, indent=2, default=str)}")
+            return result
 
         except Exception as e:
             logger.error(f"Error calling Anthropic API: {str(e)}")
             logger.error(f"Full error details: {e}")
-            raise
+            # Return an error response instead of raising an exception
+            return {
+                "content": f"An error occurred while processing your request: {str(e)}",
+                "timestamp": datetime.now().isoformat(),
+                "function_calls": [],
+                "formatted_response": None,
+                "error": str(e)
+            }
 
-        # Extract content, timestamp, and function calls from the response
-        text_content = ""
-        function_calls = []
-        timestamp = datetime.now().isoformat()
-
-        for content in response.content:
-            if content.type == 'text':
-                text_content += content.text
-            elif content.type == 'tool_call':
-                function_calls.append({
-                    "name": content.tool_call.function.name,
-                    "arguments": json.loads(content.tool_call.function.arguments),
-                })
-
-        # Apply response variety to the text content
-        if text_content:
-            text_content = add_response_variety(text_content)
-
-        logger.info(f"Processed response content: {text_content}")
-        logger.info(f"Function calls in response: {json.dumps(function_calls, indent=2)}")
-
-        # Format the response for output
-        formatted_response = format_response(text_content) if text_content else None
-        logger.info(f"Formatted response: {formatted_response}")
-
-        # Return in the standardized format, including the formatted_response
-        result = {
-            "content": text_content,
-            "timestamp": timestamp,
-            "function_calls": function_calls,
-            "formatted_response": formatted_response
-        }
-        logger.info(f"Returning result: {json.dumps(result, indent=2, default=str)}")
-        return result
-
+        
     async def call_openai_api(self, messages=None, system_prompt=None, tools=None, model=None):
         oai_messages = []
 
