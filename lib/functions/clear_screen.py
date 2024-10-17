@@ -8,9 +8,10 @@ try:
 except ImportError:
     cowsay = None
 
-from lib.function_wrapper import function_info_decorator
+from lib.function_wrapper import function_info_decorator, strict
 
 @function_info_decorator
+@strict # must come after function dectorator
 def clear_screen(cowsay_option: bool = False) -> Dict[str, str]:
     """
     Clears the terminal screen based on the operating system.
@@ -19,11 +20,13 @@ def clear_screen(cowsay_option: bool = False) -> Dict[str, str]:
     :param cowsay_option: Whether to display a cowsay message (default: False)
     :return: A dictionary indicating the success status and optional error message.
     """
+
     try:
         # Clear screen efficiently based on OS
-        os.system("cls" if platform.system() == "Windows" else "clear")
+        # os.system("cls" if platform.system() == "Windows" else "clear")
 
         # Display cowsay message if requested and available
+        cowsay_option = False
         if cowsay_option:
             if cowsay:
                 sayings = [

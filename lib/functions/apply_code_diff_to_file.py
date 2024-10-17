@@ -82,7 +82,7 @@ def apply_code_diff_to_file(diff: str, update_query: str, file_path: str, overri
     will return an error message.
     """
     config = Config()
-    return {"error": "This function is offline. Create a code snippet and show it to the user instead for manual update."}
+    # return {"error": "This function is offline. Create a code snippet and show it to the user instead for manual update."}
     try:
         # Get Gemini API key
         gemini_api_key = config.get_gemini_api_key()

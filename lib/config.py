@@ -11,12 +11,57 @@ from functools import lru_cache
 
 logger = get_logger()
 
+ANTHROPIC_MODELS = [
+    ("claude-3-opus-20240229", "Claude 3 Opus"),
+    ("claude-3-sonnet-20240229", "Claude 3 Sonnet"),
+    ("claude-3-haiku-20240307", "Claude 3 Haiku"),
+    ("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet")
+]
+
+GEMINI_MODELS = [
+    ("gemini-1.5-pro", "Gemini 1.5 Pro"),
+    ("gemini-1.5-flash", "Gemini 1.5 Flash"),
+    ("gemini-1.0-pro", "Gemini 1.0 Pro"),
+]
+
 class Config:
     def __init__(self):
         self.config_dir = os.path.expanduser('~/.webwright')
         self.config_file_path = os.path.join(self.config_dir, "webwright_config")
         self.config = ConfigParser()
+        self.models = []
         self.read_config()
+        self.populate_models()
+
+    def populate_models(self):
+        # Add OpenAI models
+        openai_token = self.get_openai_api_key()
+        
+        # Add OpenAI models if the token is available
+        if openai_token:
+            try:
+                client = OpenAI(api_key=openai_token)
+                models = client.models.list()
+                self.models.extend([
+                    {"name": model.id, "model": model.id, "api_service": "openai"}
+                    for model in models.data
+                ])
+            except Exception as e:
+                logger.error(f"Error fetching OpenAI models: {str(e)}")
+
+        # Add Anthropic models
+        self.models.extend([
+            {"name": name, "model": model_id, "api_service": "anthropic"}
+            for model_id, name in ANTHROPIC_MODELS
+        ])
+
+        # Add Gemini models
+        self.models.extend([
+            {"name": name, "model": model_id, "api_service": "gemini"}
+            for model_id, name in GEMINI_MODELS
+        ])
+
+        return self.models
 
     def ensure_config_dir_exists(self):
         os.makedirs(self.config_dir, exist_ok=True)
@@ -259,6 +304,7 @@ class Config:
         try:
             client = OpenAI(api_key=api_key)
             models = client.models.list()
+            
             model_choices = [(model.id, model.id) for model in models.data if "gpt" in model.id.lower()]
             
             selected_model = radiolist_dialog(
@@ -279,12 +325,10 @@ class Config:
             return None
 
     def select_anthropic_model(self):
-        ANTHROPIC_MODELS = [
-            ("claude-3-opus-20240229", "Claude 3 Opus"),
-            ("claude-3-sonnet-20240229", "Claude 3 Sonnet"),
-            ("claude-3-haiku-20240307", "Claude 3 Haiku"),
-            ("claude-3-5-sonnet-20240620", "Claude 3.5 Sonnet")
-        ]
+        self.models.extend([
+            {"name": name, "model": model_id, "api_service": "anthropic"}
+            for model_id, name in ANTHROPIC_MODELS
+        ])
         
         selected_model = radiolist_dialog(
             title="Select Anthropic Model",
@@ -301,12 +345,11 @@ class Config:
             return None
 
     def select_gemini_model(self):
-        GEMINI_MODELS = [
-            ("gemini-1.5-pro", "Gemini 1.5 Pro"),
-            ("gemini-1.5-flash", "Gemini 1.5 Flash"),
-            ("gemini-1.0-pro", "Gemini 1.0 Pro"),
-        ]
-        
+        self.models.extend([
+            {"name": name, "model": model_id, "api_service": "gemini"}
+            for model_id, name in GEMINI_MODELS
+        ])
+
         selected_model = radiolist_dialog(
             title="Select Gemini Model",
             text="Choose a Gemini model from the list below:",

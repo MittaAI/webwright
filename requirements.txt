@@ -17,3 +17,5 @@ cowsay
 google-generativeai
 unidiff
 patch
+chromadb==0.5.5
+playsound

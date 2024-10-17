@@ -1,40 +1,34 @@
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 import subprocess
-import os
-import shutil
+from pathlib import Path
 
 class CustomInstallCommand(install):
     def run(self):
-        # Run the regular installation
         install.run(self)
+        subprocess.check_call([
+            "pip", "install", "--no-deps", "--force-reinstall", 
+            "chroma-hnswlib==0.7.3"
+        ])
 
-        # Get the package directory
-        package_dir = os.path.dirname(os.path.abspath(__file__))
-
-        # Path to the templates directory
-        templates_dir = os.path.join(package_dir, 'templates')
-
-        # Path to the installation directory
-        install_dir = os.path.join(self.install_lib, 'webwright')
-
-        # Copy the contents of the templates directory to the installation directory
-        shutil.copytree(templates_dir, os.path.join(install_dir, 'templates'), dirs_exist_ok=True)
-
-        # Download the INSTRUCTOR model
-        subprocess.run(["python", "-m", "InstructorEmbedding", "hkunlp/instructor-xl"])
-
-# Read the requirements from requirements.txt
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
+requirements = [req for req in requirements if not req.startswith('chroma-hnswlib')]
+
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text(encoding="utf-8")
+
 setup(
     name='webwright',
-    version='0.1.0',
+    version='0.0.5',
+    author='Kord Campbell',
+    author_email='kordless@gmail.com',
+    description="Webwright: The Ghost in Your Shell 👻💻",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    url="https://github.com/MittaAI/webwright",
     packages=find_packages(),
-    package_data={
-        'webwright': ['templates/*'],
-    },
     install_requires=requirements,
     entry_points={
         'console_scripts': [
@@ -44,4 +38,20 @@ setup(
     cmdclass={
         'install': CustomInstallCommand,
     },
+    license="MIT",
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Intended Audience :: System Administrators",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Topic :: System :: Shells",
+        "Topic :: Utilities",
+    ],
+    keywords="ai terminal shell automation development tools",
 )

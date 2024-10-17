@@ -14,6 +14,7 @@ def calculate(expression: str) -> dict:
     :return: A dictionary containing the result of the calculation.
     :rtype: dict
     """
+    
     # Define a safe dictionary of allowed names
     allowed_names = {
         'sqrt': math.sqrt,

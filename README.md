@@ -1,7 +1,3 @@
-<div align="center">
-  <img src="https://github.com/MittaAI/webwright/blob/main/assets/logo.png" width="200" alt="Webwright Logo">
-</div>
-
 # Webwright: The Ghost in Your Shell 👻💻
 
 Webwright is more than just a terminal shell—it's a transformative tool that gets things done, plain and simple.
@@ -23,6 +19,8 @@ Webwright requires an API token from either OpenAI or Anthropic to function. You
 
 Please ensure you have at least one of these API keys before proceeding with the installation.
 
+We are strongly hoping to have support for Ollama soon.
+
 ## 🚀 Key Features
 
 - 🌐 **AI-Powered Web Development**: Craft and launch websites with intelligent, AI-driven tools.
@@ -33,13 +31,10 @@ Please ensure you have at least one of these API keys before proceeding with the
 - 🌐 **Browser Magic**: Automate web tasks and open URLs (or other apps) with simple commands.
 - 🔧 **Infinitely Extensible**: Customize your shell with bespoke commands and scripts.
 
-## Demo
-![Animated GIF](https://github.com/MittaAI/webwright/blob/main/assets/video.gif?raw=true)
-
 ## 🛠️ Installation
 Webwright requires Anaconda and Docker to be configured on your system.
 
-1. **Install Webwright** (coming soon)
+1. **Install Webwright**
    ```bash
    pip install webwright
    ```
@@ -66,31 +61,6 @@ Webwright requires Anaconda and Docker to be configured on your system.
    ```bash
    webwright
    ```
-
-## 🔄 System Flow Diagram
-
-```mermaid
-graph TD
-    A[User] -->|Enters command| B[Webwright Shell]
-    B -->|Processes command| E{OpenAI or Anthropic?}
-    E -->|OpenAI| F[OpenAI API]
-    E -->|Anthropic| G[Anthropic API]
-    F -->|Response| H[Process AI Response]
-    G -->|Response| H
-    H <-->|Query/Update| L[(Vector Store)]
-    H <-->|Query/Update| M[(Set Store)]
-    H -->|Generate Code/App| I[Code/Application Output]
-    H -->|Execute Function| J[Function Execution]
-    J -->|Result| K[Process Function Result]
-    K -->|Update Context| B
-    I -->|Display to User| A
-    B <-->|API Calls| N[mitta.ai API]
-    N -->|Document Processing| O[Process Documents]
-    N -->|Web Crawling| P[Crawl Websites]
-    N -->|Other Functionality| Q[...]
-```
-
-This diagram illustrates the flow of Webwright's functionality, showing how user commands are processed, how AI requests are handled, and how data is stored and retrieved.
 
 ## Getting Started
 
@@ -128,7 +98,7 @@ docker start my-container
 
 ### AI-Powered Code Generation
 
-Webwright can generate complex code snippets using AI. For example, to generate an ASCII fractal:
+Webwright can generate complex code snippets using AI. For example, to generate a fractal:
 
 ```bash
 generate fractal --size 20
@@ -198,17 +168,19 @@ For developers who want to install Webwright for testing, building, and running 
 
 3. **Install Dependencies**
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements.txt --no-deps -U chroma-hnswlib==0.7.3
    ```
 
 4. **Install Git (if not already installed)**
    ```bash
    conda install git
    ```
+
 5. **Add GITHUB_TOKEN to Environment**
    ```bash
    $env:GITHUB_TOKEN = "your_github_token"
    ```
+
 6. **Run Webwright from Source**
    ```bash
    python webwright/main.py
@@ -229,14 +201,26 @@ This will set up the necessary configuration for conda to work properly within V
 To build and test Webwright:
 
 1. **Install Development Dependencies**
-   ```bash
-   pip install -r requirements-dev.txt
-   ```
+Install all dependencies except chroma-hnswlib (current version has issues)
+```
+pip install -r <(grep -v chroma-hnswlib requirements.txt)
+```
+
+Install the specific version of chroma-hnswlib
+```
+pip install --no-deps chroma-hnswlib==0.7.3
+```
+
+Install remaining dependencies
+```
+pip install -r requirements.txt
+```
 
 2. **Run Tests**
    ```bash
    pytest
    ```
+NOT WORKING.
 
 3. **Build Package**
    ```bash
@@ -294,11 +278,5 @@ Join our community on [Slack](https://join.slack.com/t/mittaai/shared_invite/zt-
 ## License
 
 Webwright is open-source software licensed under the [MIT License](https://opensource.org/license/mit).
-
----
-
-With Webwright, harness the power of AI to enhance your development workflow and make building and managing websites easier and more efficient than ever before. Try it today and experience the future of web development!
-
----
 
 © Mitta Corp. All rights reserved 2024.
