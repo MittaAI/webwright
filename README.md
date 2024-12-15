@@ -19,7 +19,20 @@ Webwright requires an API token from either OpenAI or Anthropic to function. You
 
 Please ensure you have at least one of these API keys before proceeding with the installation.
 
-We are strongly hoping to have support for Ollama soon.
+## Ollama Support
+Webwright now supports both local and remote Ollama instances:
+
+### Local Ollama
+1. Install Ollama following instructions at https://ollama.ai
+2. Start the Ollama service
+3. Webwright will automatically detect and use the local Ollama instance
+
+### Remote Ollama (substrate.run)
+1. Get your substrate.run endpoint URL
+2. Configure Webwright with your endpoint:
+   ```bash
+   export OLLAMA_API_ENDPOINT="https://your-instance.substrate.run"
+   ```
 
 ## 🚀 Key Features
 
