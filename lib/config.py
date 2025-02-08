@@ -24,6 +24,13 @@ GEMINI_MODELS = [
     ("gemini-1.0-pro", "Gemini 1.0 Pro"),
 ]
 
+OLLAMA_MODELS = [
+    ("llama2", "Llama 2"),
+    ("mistral", "Mistral"),
+    ("codellama", "Code Llama"),
+    ("mixtral", "Mixtral")
+]
+
 class Config:
     def __init__(self):
         self.config_dir = os.path.expanduser('~/.webwright')
@@ -36,7 +43,7 @@ class Config:
     def populate_models(self):
         # Add OpenAI models
         openai_token = self.get_openai_api_key()
-        
+
         # Add OpenAI models if the token is available
         if openai_token:
             try:
@@ -59,6 +66,12 @@ class Config:
         self.models.extend([
             {"name": name, "model": model_id, "api_service": "gemini"}
             for model_id, name in GEMINI_MODELS
+        ])
+
+        # Add Ollama models
+        self.models.extend([
+            {"name": name, "model": model_id, "api_service": "ollama"}
+            for model_id, name in OLLAMA_MODELS
         ])
 
         return self.models
@@ -233,6 +246,18 @@ class Config:
         except Exception as e:
             logger.error(f"Error verifying Gemini API token: {str(e)}")
             return False
+
+    def get_ollama_endpoint(self):
+        endpoint = os.getenv("OLLAMA_API_ENDPOINT") or self.get_config_value("config", "OLLAMA_API_ENDPOINT")
+        if not endpoint:
+            endpoint = input_dialog(
+                title="Ollama API Endpoint",
+                text="Enter Ollama API endpoint (local or substrate.run, Enter for default):"
+            ).run()
+            if not endpoint:
+                endpoint = "http://localhost:11434"  # Default local endpoint
+            self.set_config_value("config", "OLLAMA_API_ENDPOINT", endpoint)
+        return endpoint
         
     def determine_api_to_use(self):
         preferred_api = self.get_config_value("config", "PREFERRED_API")

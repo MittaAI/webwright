@@ -5,6 +5,9 @@ from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 from anthropic.types import TextBlock, ToolUseBlock
 
+# Aiohttp import for Ollama API
+import aiohttp
+
 # Utility imports (assuming these are from your local modules)
 from lib.util import create_and_check_directory
 from prompt_toolkit import PromptSession, print_formatted_text
@@ -143,7 +146,7 @@ class llm_wrapper:
     def __init__(self, service_api="anthropic", config=None):
         self.service_api = service_api
         self.config = config
-    
+
     async def call_llm_api(self, messages=None, system_prompt=SYSTEM_PROMPT, tools=tools, service_api=None, model=None):
         if service_api:
             self.service_api = service_api
@@ -153,6 +156,8 @@ class llm_wrapper:
             return await self.call_openai_api(messages, system_prompt, tools, model)
         elif self.service_api == "anthropic":
             return await self.call_anthropic_api(messages, system_prompt, tools, model)
+        elif self.service_api == "ollama":
+            return await self.call_ollama_api(messages, system_prompt, tools, model)
 
     async def call_anthropic_api(self, messages=None, system_prompt=SYSTEM_PROMPT, tools=None, model=None):
         logger.info("Starting call_anthropic_api method")
@@ -306,7 +311,7 @@ class llm_wrapper:
                     # Handle structured content (e.g., text and tool use)
                     text_content = next((item["text"] for item in message["content"] if item["type"] == "text"), "")
                     tool_use = next((item for item in message["content"] if item["type"] == "tool_use"), None)
-                    
+
                     if tool_use:
                         last_assistant_message = {
                             "role": "assistant",
@@ -395,6 +400,44 @@ class llm_wrapper:
         except Exception as e:
             logger.error(f"Error calling OpenAI API: {e}")
             # Return an error response instead of raising an exception
+            return {
+                "content": f"An error occurred while processing your request: {str(e)}",
+                "timestamp": datetime.now().isoformat(),
+                "function_calls": [],
+                "formatted_response": None,
+                "error": str(e)
+            }
+
+    async def call_ollama_api(self, messages=None, system_prompt=SYSTEM_PROMPT, tools=None, model=None):
+        # Convert messages to Ollama format
+        ollama_messages = []
+        for message in messages:
+            if message["type"] == "user_query":
+                ollama_messages.append({"role": "user", "content": message["content"]})
+            elif message["type"] == "llm_response":
+                ollama_messages.append({"role": "assistant", "content": message["content"]})
+
+        # Prepare API parameters
+        api_params = {
+            "model": model or self.config.get_config_value("config", "OLLAMA_MODEL"),
+            "messages": ollama_messages,
+            "stream": False
+        }
+
+        try:
+            endpoint = self.config.get_ollama_endpoint()
+            async with aiohttp.ClientSession() as session:
+                async with session.post(f"{endpoint}/api/chat", json=api_params) as response:
+                    result = await response.json()
+
+                    return {
+                        "content": result["message"]["content"],
+                        "timestamp": datetime.now().isoformat(),
+                        "function_calls": [],  # Ollama doesn't support function calls yet
+                        "formatted_response": format_response(result["message"]["content"])
+                    }
+        except Exception as e:
+            logger.error(f"Error calling Ollama API: {str(e)}")
             return {
                 "content": f"An error occurred while processing your request: {str(e)}",
                 "timestamp": datetime.now().isoformat(),
